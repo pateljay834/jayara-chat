@@ -1,4 +1,4 @@
-// Firebase Configuration
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -19,6 +19,7 @@ let roomRef = null;
 
 document.getElementById("joinBtn").addEventListener("click", joinRoom);
 document.getElementById("sendBtn").addEventListener("click", sendMessage);
+document.getElementById("deleteAllBtn").addEventListener("click", deleteAllMessages);
 
 function joinRoom() {
   currentUser = document.getElementById("username").value.trim() || "Guest";
@@ -26,12 +27,13 @@ function joinRoom() {
   currentMode = document.getElementById("mode").value;
 
   document.getElementById("chatArea").style.display = "block";
+  document.getElementById("loginArea").style.display = "none";
   document.getElementById("messages").innerHTML = "";
 
   const roomPath = "rooms/" + currentRoom;
   roomRef = db.ref(roomPath);
 
-  // ✅ Vanish Mode: clear all previous messages when user joins
+  // Vanish Mode: clear previous messages
   if (currentMode === "vanish") {
     roomRef.remove();
   }
@@ -41,8 +43,8 @@ function joinRoom() {
     const data = snap.val();
     if (!data) return;
 
-    // Auto-delete old messages in Storage Mode (>15 days)
-    if (currentMode === "storage" && Date.now() - data.time > 15 * 24 * 60 * 60 * 1000) {
+    // Storage Mode: auto-delete messages older than 15 days
+    if (currentMode === "storage" && Date.now() - data.time > 15*24*60*60*1000) {
       snap.ref.remove();
       return;
     }
@@ -68,4 +70,9 @@ function sendMessage() {
   document.getElementById("msgBox").value = "";
 }
 
-// ❌ Remove beforeunload — not reliable on mobile PWA
+function deleteAllMessages() {
+  if (!roomRef) return;
+  if (confirm("Are you sure you want to delete all messages in this room?")) {
+    roomRef.remove();
+  }
+}
