@@ -12,20 +12,27 @@
 <body>
   <div id="chat">
     <h2>Jayara Chat</h2>
-    <input id="username" placeholder="Enter Your Name"><br>
-    <input id="room" placeholder="Enter Room Code"><br>
-    <select id="mode">
-      <option value="vanish">Vanish Mode</option>
-      <option value="storage">Storage Mode</option>
-    </select><br>
-    <button id="joinBtn">Join</button>
+
+    <div id="loginArea">
+      <input id="username" placeholder="Enter Your Name">
+      <input id="room" placeholder="Enter Room Code">
+      <select id="mode">
+        <option value="vanish">Vanish Mode</option>
+        <option value="storage">Storage Mode</option>
+      </select>
+      <button id="joinBtn">Join Room</button>
+    </div>
 
     <div id="chatArea" style="display:none;">
       <div id="messages"></div>
-      <input id="msgBox" placeholder="Type a message">
-      <button id="sendBtn">Send</button>
+      <div id="inputArea">
+        <input id="msgBox" placeholder="Type a message">
+        <button id="sendBtn">Send</button>
+      </div>
+      <button id="deleteAllBtn" style="background:#ff4d4d;">Delete All Messages</button>
     </div>
   </div>
+
   <script src="apps.js"></script>
 </body>
 </html>
