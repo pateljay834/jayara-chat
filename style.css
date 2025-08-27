@@ -1,0 +1,78 @@
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#6b73ff,#000dff);
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#chat {
+  width: 95%;
+  max-width: 420px;
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+#messages {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+  padding: 10px;
+  text-align: left;
+  border-radius: 10px;
+  background: #f9f9f9;
+}
+
+input, select, button {
+  padding: 10px;
+  margin: 5px 0;
+  width: 90%;
+  max-width: 350px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+button {
+  background: #317EFB;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #255ec7;
+}
+
+.msg {
+  margin: 5px 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.me {
+  background: #d1e7ff;
+  text-align: right;
+  margin-left: auto;
+}
+
+.other {
+  background: #f1f1f1;
+  text-align: left;
+}
+
+.username {
+  font-weight: bold;
+  font-size: 0.85em;
+  margin-right: 5px;
+}
