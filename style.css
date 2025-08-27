@@ -12,52 +12,66 @@ body {
 
 #chat {
   width: 95%;
-  max-width: 420px;
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  max-width: 450px;
+  background: #fff;
+  padding: 25px;
+  border-radius: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
 }
 
-#messages {
-  height: 300px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  margin-bottom: 10px;
-  padding: 10px;
-  text-align: left;
-  border-radius: 10px;
-  background: #f9f9f9;
+h2 {
+  margin-bottom: 15px;
+  color: #317EFB;
 }
 
 input, select, button {
-  padding: 10px;
+  padding: 12px;
   margin: 5px 0;
   width: 90%;
-  max-width: 350px;
-  border-radius: 8px;
+  max-width: 380px;
+  border-radius: 12px;
   border: 1px solid #ccc;
   box-sizing: border-box;
 }
 
-button {
-  background: #317EFB;
-  color: white;
-  border: none;
+#joinBtn, #sendBtn, #deleteAllBtn {
   cursor: pointer;
   transition: 0.2s;
 }
 
-button:hover {
+#joinBtn, #sendBtn {
+  background: #317EFB;
+  color: white;
+  border: none;
+}
+
+#joinBtn:hover, #sendBtn:hover {
   background: #255ec7;
 }
 
+#deleteAllBtn {
+  margin-top: 10px;
+  color: white;
+  border: none;
+}
+
+#messages {
+  height: 320px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin: 15px 0;
+  padding: 12px;
+  border-radius: 15px;
+  background: #f9f9f9;
+}
+
 .msg {
-  margin: 5px 0;
-  padding: 8px 10px;
-  border-radius: 12px;
-  max-width: 80%;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border-radius: 15px;
+  max-width: 75%;
   word-wrap: break-word;
+  font-size: 0.95em;
 }
 
 .me {
@@ -75,4 +89,14 @@ button:hover {
   font-weight: bold;
   font-size: 0.85em;
   margin-right: 5px;
+}
+
+#inputArea {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+#msgBox {
+  flex: 1;
 }
