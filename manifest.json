@@ -1,0 +1,22 @@
+{
+  "name": "Jayara Chat",
+  "short_name": "Jayara",
+  "description": "Web-based real-time chat app with vanish and storage modes.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000DFF",
+  "theme_color": "#6B73FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2462/2462719.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2462/2462719.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
