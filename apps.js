@@ -28,13 +28,26 @@ function joinRoom() {
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("messages").innerHTML = "";
 
-  roomRef = db.ref("rooms/" + currentRoom);
+  const roomPath = "rooms/" + currentRoom;
+  roomRef = db.ref(roomPath);
 
+  // ✅ Vanish Mode: clear all previous messages when user joins
+  if (currentMode === "vanish") {
+    roomRef.remove();
+  }
+
+  // Listen for new messages
   roomRef.on("child_added", snap => {
-    let data = snap.val();
+    const data = snap.val();
     if (!data) return;
 
-    let msgDiv = document.createElement("div");
+    // Auto-delete old messages in Storage Mode (>15 days)
+    if (currentMode === "storage" && Date.now() - data.time > 15 * 24 * 60 * 60 * 1000) {
+      snap.ref.remove();
+      return;
+    }
+
+    const msgDiv = document.createElement("div");
     msgDiv.classList.add("msg", data.user === currentUser ? "me" : "other");
     msgDiv.innerHTML = `<span class="username">${data.user}:</span> ${data.text}`;
     document.getElementById("messages").appendChild(msgDiv);
@@ -43,19 +56,16 @@ function joinRoom() {
 }
 
 function sendMessage() {
-  let text = document.getElementById("msgBox").value.trim();
+  const text = document.getElementById("msgBox").value.trim();
   if (!text) return;
+
   roomRef.push({
     user: currentUser,
     text: text,
     time: Date.now()
   });
+
   document.getElementById("msgBox").value = "";
 }
 
-// Vanish mode: delete messages on exit
-window.addEventListener("beforeunload", () => {
-  if (currentMode === "vanish" && currentRoom) {
-    db.ref("rooms/" + currentRoom).remove();
-  }
-});
+// ❌ Remove beforeunload — not reliable on mobile PWA
