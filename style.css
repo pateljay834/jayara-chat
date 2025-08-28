@@ -1,120 +1,90 @@
 body {
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg,#6b73ff,#000dff);
-  text-align: center;
+  background: linear-gradient(135deg, #317EFB, #6EC6FF);
   margin: 0;
-  padding: 0;
-  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
 }
 
 #chat {
+  background: white;
   width: 95%;
-  max-width: 450px;
-  background: #fff;
-  padding: 25px;
-  border-radius: 20px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+  max-width: 420px;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 h2 {
-  margin-bottom: 15px;
+  margin-top: 0;
   color: #317EFB;
 }
 
 input, select, button {
-  padding: 12px;
-  margin: 5px 0;
-  width: 90%;
-  max-width: 380px;
-  border-radius: 12px;
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  font-size: 16px;
   border: 1px solid #ccc;
-  box-sizing: border-box;
+  border-radius: 6px;
 }
 
-#joinBtn, #sendBtn, #deleteAllBtn {
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-#joinBtn, #sendBtn {
+button {
   background: #317EFB;
   color: white;
   border: none;
+  cursor: pointer;
 }
-
-#joinBtn:hover, #sendBtn:hover {
+button:hover {
   background: #255ec7;
 }
 
-#deleteAllBtn {
-  margin-top: 10px;
-  color: white;
-  border: none;
-}
-
 #messages {
-  height: 320px;
+  height: 280px;
   overflow-y: auto;
   border: 1px solid #ccc;
-  margin: 15px 0;
-  padding: 12px;
-  border-radius: 15px;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 10px;
   background: #f9f9f9;
 }
 
 .msg {
   margin: 6px 0;
-  padding: 10px 14px;
-  border-radius: 15px;
-  max-width: 75%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  max-width: 80%;
   word-wrap: break-word;
-  font-size: 0.95em;
 }
-
 .me {
   background: #d1e7ff;
-  text-align: right;
-  margin-left: auto;
+  float: right;
+  clear: both;
 }
-
 .other {
-  background: #f1f1f1;
-  text-align: left;
+  background: #e9e9e9;
+  float: left;
+  clear: both;
 }
-
 .username {
   font-weight: bold;
-  font-size: 0.85em;
+  font-size: 0.9em;
   margin-right: 5px;
 }
 
 #inputArea {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 10px;
+  gap: 6px;
 }
-
 #msgBox {
   flex: 1;
-  padding: 10px;
-  font-size: 1em;
-  border-radius: 12px;
-  border: 1px solid #ccc;
+  font-size: 16px;
 }
-
-#sendBtn {
-  width: 60px;
-  background: #317EFB;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1em;
-}
-
-#sendBtn:hover {
-  background: #255ec7;
+#inputArea button {
+  flex: 0 0 60px;
+  font-size: 18px;
+  padding: 0;
 }
