@@ -18,6 +18,7 @@ let currentRoom = "";
 let username = "";
 let mode = "storage";
 let encryptionKey = "";
+let listenerAttached = false;
 
 // IndexedDB setup for local messages
 let localDB;
@@ -28,6 +29,11 @@ request.onupgradeneeded = e => {
   store.createIndex("roomID", "room", { unique: false });
 };
 request.onsuccess = e => { localDB = e.target.result; };
+
+// Auto-fill room & passphrase from invite link
+const params = new URLSearchParams(window.location.search);
+if (params.get("room")) document.getElementById("room").value = params.get("room");
+if (params.get("pass")) document.getElementById("passphrase").value = params.get("pass");
 
 // Generate AES key from room + passphrase
 function deriveKey(room, passphrase) {
@@ -77,7 +83,6 @@ function sendMessage() {
   const encrypted = encryptMessage(text);
   const msgRef = db.ref(`rooms/${currentRoom}/messages`).push();
 
-  // Message object
   const msgObj = {
     senderDevice: username + "_" + Date.now(),
     ciphertext: encrypted,
@@ -93,20 +98,20 @@ function sendMessage() {
   msgBox.value = "";
 }
 
-// Listen for messages and handle Vanish Mode
+// Listen for messages (attach only once)
 function listenMessages() {
+  if (listenerAttached) return;
+  listenerAttached = true;
+
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
   msgRef.on("child_added", snapshot => {
     const data = snapshot.val();
     const decrypted = decryptMessage(data.ciphertext);
 
-    // Storage Mode: save locally
     if (mode === "storage") storeLocalMessage(decrypted, data.senderDevice);
 
-    // Update delivered status
     snapshot.ref.child("deliveredTo").child(username).set(true);
 
-    // Remove if Vanish Mode & delivered to all or older than 24h
     snapshot.ref.child("deliveredTo").once("value").then(ds => {
       const allDelivered = Object.values(ds.val()).every(v => v === true);
       if ((mode === "vanish" && allDelivered) || (data.vanish && Date.now() - data.timestamp > 24*60*60*1000)) {
@@ -117,7 +122,7 @@ function listenMessages() {
   displayMessages();
 }
 
-// Store message locally in IndexedDB
+// Store message locally
 function storeLocalMessage(text, senderID) {
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
@@ -125,15 +130,17 @@ function storeLocalMessage(text, senderID) {
   tx.oncomplete = displayMessages;
 }
 
-// Display messages in chat area
+// Display messages
 function displayMessages() {
   const container = document.getElementById("messages");
-  container.innerHTML = "";
+  container.innerHTML = ""; // clear old messages
+
   const tx = localDB.transaction(["messages"], "readonly");
   const store = tx.objectStore("messages");
   const request = store.getAll();
   request.onsuccess = e => {
     e.target.result.forEach(msg => {
+      if (msg.room !== currentRoom) return; // show only current room
       const div = document.createElement("div");
       div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
       div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
@@ -164,13 +171,17 @@ function clearLocalMessages() {
 
 // Leave room
 function leaveRoom() {
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`);
+  msgRef.off(); // detach listener
+  listenerAttached = false;
+
   document.getElementById("chatArea").style.display = "none";
   currentRoom = "";
   username = "";
   encryptionKey = "";
 }
 
-// Periodic cleanup: remove Vanish Mode messages older than 24h
+// Periodic cleanup for Vanish Mode
 setInterval(() => {
   if (!currentRoom) return;
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
