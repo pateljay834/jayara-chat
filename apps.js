@@ -1,6 +1,6 @@
-// Firebase Config
+// ✅ Firebase Config (compat version)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
   databaseURL: "https://jayara-web-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "jayara-web",
@@ -8,13 +8,14 @@ const firebaseConfig = {
   messagingSenderId: "342182893596",
   appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
-firebase.initializeApp(firebaseConfig);
 
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let currentRoom = null;
 let currentUser = "";
 let currentMode = "vanish";
+let roomRef = null;
 
 // Join a room
 function joinRoom() {
@@ -25,29 +26,30 @@ function joinRoom() {
   if (!currentUser) currentUser = "Guest";
   if (!currentRoom) currentRoom = "defaultRoom";
 
+  if (roomRef) roomRef.off(); // stop old listener
+  roomRef = db.ref("rooms/" + currentRoom);
+
   document.getElementById("chatArea").style.display = "block";
+  document.getElementById("leaveBtn").style.display = "inline-block"; // show Leave
   document.getElementById("messages").innerHTML = "";
 
-  // ✅ Listen for messages in this room
-  db.ref("rooms/" + currentRoom).on("child_added", snap => {
+  roomRef.on("child_added", snap => {
     let data = snap.val();
     let now = Date.now();
 
-    // Auto-delete old messages in storage mode
     if (currentMode === "storage" && now - data.time > 15 * 24 * 60 * 60 * 1000) {
       snap.ref.remove();
       return;
     }
 
-    // Create message bubble
     let msgDiv = document.createElement("div");
     msgDiv.classList.add("msg");
     msgDiv.classList.add(data.user === currentUser ? "me" : "other");
     msgDiv.innerHTML = `<span class="username">${data.user}:</span> ${data.text}`;
-    document.getElementById("messages").appendChild(msgDiv);
 
-    // Scroll to latest
-    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    let messagesDiv = document.getElementById("messages");
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 }
 
@@ -65,24 +67,18 @@ function sendMessage() {
   document.getElementById("msgBox").value = "";
 }
 
-// Leave current room
+// Leave a room
 function leaveRoom() {
-  if (currentRoom) {
-    db.ref("rooms/" + currentRoom).off(); // Stop listening
+  if (roomRef) {
+    roomRef.off(); // stop listening
+    if (currentMode === "vanish") {
+      roomRef.remove(); // delete messages
+    }
   }
 
   document.getElementById("chatArea").style.display = "none";
+  document.getElementById("leaveBtn").style.display = "none";
   document.getElementById("messages").innerHTML = "";
-  document.getElementById("username").value = "";
-  document.getElementById("room").value = "";
-
   currentRoom = null;
-  currentUser = "";
+  roomRef = null;
 }
-
-// ✅ Vanish mode: delete all messages when closing window
-window.addEventListener("beforeunload", () => {
-  if (currentMode === "vanish" && currentRoom) {
-    db.ref("rooms/" + currentRoom).remove();
-  }
-});
