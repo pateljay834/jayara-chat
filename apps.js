@@ -77,16 +77,16 @@ async function joinRoom() {
   currentRoom = room;
   currentMode = mode;
 
-  let passphrase = prompt("Enter passphrase for room:");
+  let storedPass = localStorage.getItem(`jayara_pass_${room}`);
+  let passphrase = storedPass || prompt("Enter passphrase for room:");
   if (!passphrase) return;
 
   roomKey = await generateRoomKey(passphrase, currentRoom);
 
-  // Device-specific storage
   if (currentMode === "storage") {
-    localStorage.setItem("jayara_user_" + currentRoom, currentUser);
-    localStorage.setItem("jayara_pass_" + currentRoom, passphrase);
-    localStorage.setItem("jayara_mode_" + currentRoom, currentMode);
+    localStorage.setItem(`jayara_user_${room}`, currentUser);
+    localStorage.setItem(`jayara_pass_${room}`, passphrase);
+    localStorage.setItem(`jayara_mode_${room}`, currentMode);
   }
 
   setupChatListeners();
@@ -97,18 +97,18 @@ async function joinRoom() {
 
 // ----------------- Auto-Join -----------------
 async function autoJoinRoom() {
-  const savedRooms = Object.keys(localStorage).filter(k => k.startsWith("jayara_user_"));
-  for (const key of savedRooms) {
-    const roomCode = key.replace("jayara_user_", "");
-    const savedUser = localStorage.getItem("jayara_user_" + roomCode);
-    const savedPass = localStorage.getItem("jayara_pass_" + roomCode);
-    const savedMode = localStorage.getItem("jayara_mode_" + roomCode);
+  const keys = Object.keys(localStorage).filter(k => k.startsWith("jayara_user_"));
+  for (const key of keys) {
+    const room = key.replace("jayara_user_", "");
+    const user = localStorage.getItem(`jayara_user_${room}`);
+    const pass = localStorage.getItem(`jayara_pass_${room}`);
+    const mode = localStorage.getItem(`jayara_mode_${room}`);
 
-    if (savedUser && savedPass && savedMode) {
-      currentUser = savedUser;
-      currentRoom = roomCode;
-      currentMode = savedMode;
-      roomKey = await generateRoomKey(savedPass, currentRoom);
+    if (user && pass && mode) {
+      currentUser = user;
+      currentRoom = room;
+      currentMode = mode;
+      roomKey = await generateRoomKey(pass, currentRoom);
 
       setupChatListeners();
       document.getElementById("chatArea").style.display = "block";
@@ -120,7 +120,7 @@ async function autoJoinRoom() {
 
 // ----------------- Firebase Chat -----------------
 function setupChatListeners() {
-  messagesRef = db.ref("rooms/" + currentRoom + "/messages");
+  messagesRef = db.ref(`rooms/${currentRoom}/messages`);
   messagesRef.off();
 
   messagesRef.on("child_added", async snapshot => {
@@ -143,7 +143,7 @@ async function sendMessage() {
 function displayMessage(sender, text, isMe) {
   const messagesDiv = document.getElementById("messages");
   const div = document.createElement("div");
-  div.className = "msg " + (isMe ? "me" : "other");
+  div.className = `msg ${isMe ? "me" : "other"}`;
   div.innerHTML = `<span class="username">${sender}</span>: ${text}`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -158,10 +158,9 @@ function leaveRoom() {
   currentUser = null;
   document.getElementById("chatArea").style.display = "none";
 
-  // Remove this device from storage
-  localStorage.removeItem("jayara_user_" + currentRoom);
-  localStorage.removeItem("jayara_pass_" + currentRoom);
-  localStorage.removeItem("jayara_mode_" + currentRoom);
+  localStorage.removeItem(`jayara_user_${currentRoom}`);
+  localStorage.removeItem(`jayara_pass_${currentRoom}`);
+  localStorage.removeItem(`jayara_mode_${currentRoom}`);
 }
 
 function deleteAllMessages() {
@@ -180,19 +179,4 @@ async function requestNotificationPermission() {
 async function initFCM() {
   try {
     const token = await messaging.getToken({
-      vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0"
-    });
-    console.log("FCM Token:", token);
-  } catch (err) {
-    console.error("Error getting FCM token:", err);
-  }
-
-  messaging.onMessage(payload => {
-    const { title, body } = payload.notification || {};
-    if (title && body) new Notification(title, { body, icon: 'icon-192.png' });
-  });
-}
-
-// ----------------- Startup -----------------
-autoJoinRoom();
-requestNotificationPermission();
+      vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYu
