@@ -84,13 +84,3 @@ button:hover {
 .username {
   font-weight: bold;
   font-size: 0.85em;
-  margin-right: 5px;
-}
-
-#deleteBtn {
-  background: #e74c3c;
-}
-
-#deleteBtn:hover {
-  background: #c0392b;
-}
