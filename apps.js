@@ -11,7 +11,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ----------------- Global Variables -----------------
+// ----------------- Globals -----------------
 let currentUser = "";
 let currentRoom = "";
 let currentMode = "";
@@ -20,7 +20,6 @@ let messagesRef = null;
 
 // ----------------- Crypto -----------------
 const SALT_PREFIX = "jayara_salt_";
-
 async function generateRoomKey(passphrase, roomCode) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -60,7 +59,7 @@ async function decryptMessage(data) {
     );
     return dec.decode(plainBuffer);
   } catch {
-    return "🔒 Unable to decrypt message";
+    return "🔒 Unable to decrypt";
   }
 }
 
@@ -71,18 +70,15 @@ async function joinRoom() {
   const mode = document.getElementById("mode").value;
 
   if (!username || !room) return alert("Enter name and room code.");
-
   currentUser = username;
   currentRoom = room;
   currentMode = mode;
 
-  // Ask for passphrase every time
-  let passphrase = prompt("Enter passphrase for this room:");
-  if (!passphrase) return;
-
+  const passphrase = prompt("Enter room passphrase:");
+  if (!passphrase) return alert("Passphrase required.");
   roomKey = await generateRoomKey(passphrase, currentRoom);
 
-  // Store username/mode per device
+  // Store username & mode only
   if (currentMode === "storage") {
     localStorage.setItem(`jayara_user_${currentRoom}`, currentUser);
     localStorage.setItem(`jayara_mode_${currentRoom}`, currentMode);
@@ -92,4 +88,62 @@ async function joinRoom() {
 
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
-  if (currentMode === "storage") document.getElementById("deleteBtn").style
+  document.getElementById("deleteBtn").style.display = currentMode === "storage" ? "inline-block" : "none";
+}
+
+// ----------------- Firebase Chat -----------------
+function setupChatListeners() {
+  messagesRef = db.ref(`rooms/${currentRoom}/messages`);
+  messagesRef.off();
+
+  messagesRef.on("child_added", async snapshot => {
+    const data = snapshot.val();
+    const text = await decryptMessage(data);
+    displayMessage(data.sender, text, data.sender === currentUser);
+  });
+
+  if (currentMode === "vanish") {
+    // Delete messages when leaving
+    window.addEventListener("beforeunload", () => {
+      messagesRef.remove();
+    });
+  }
+}
+
+async function sendMessage() {
+  const msgBox = document.getElementById("msgBox");
+  const text = msgBox.value.trim();
+  if (!text || !roomKey) return;
+  const encrypted = await encryptMessage(text);
+  messagesRef.push({ sender: currentUser, ...encrypted, timestamp: Date.now() });
+  msgBox.value = "";
+}
+
+// ----------------- Display -----------------
+function displayMessage(sender, text, isMe) {
+  const messagesDiv = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = `msg ${isMe ? "me" : "other"}`;
+  div.innerHTML = `<span class="username">${sender}</span>: ${text}`;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// ----------------- Leave / Delete -----------------
+function leaveRoom() {
+  if (!currentRoom) return;
+  messagesRef = null;
+  roomKey = null;
+  currentRoom = null;
+  currentUser = null;
+  currentMode = null;
+  document.getElementById("chatArea").style.display = "none";
+
+  localStorage.removeItem(`jayara_user_${currentRoom}`);
+  localStorage.removeItem(`jayara_mode_${currentRoom}`);
+}
+
+function deleteAllMessages() {
+  if (!messagesRef) return;
+  messagesRef.remove();
+}
