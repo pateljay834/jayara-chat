@@ -22,23 +22,26 @@ let listenerAttached = false;
 
 // IndexedDB setup
 let localDB;
-const request = indexedDB.open("JayaraDB", 1);
-request.onupgradeneeded = e => {
-  localDB = e.target.result;
-  const store = localDB.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
-  store.createIndex("roomID", "room", { unique: false });
-};
-request.onsuccess = e => {
-  localDB = e.target.result;
-  console.log("IndexedDB ready");
-};
+function initDB(callback) {
+  const request = indexedDB.open("JayaraDB", 1);
+  request.onupgradeneeded = e => {
+    localDB = e.target.result;
+    const store = localDB.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
+    store.createIndex("roomID", "room", { unique: false });
+  };
+  request.onsuccess = e => {
+    localDB = e.target.result;
+    if (callback) callback();
+  };
+  request.onerror = () => alert("IndexedDB failed to open");
+}
 
-// AES key from room + passphrase
+// Generate AES key from room + passphrase
 function deriveKey(room, passphrase) {
   return CryptoJS.SHA256(room + passphrase).toString();
 }
 
-// Join a room
+// Join room
 function joinRoom() {
   username = document.getElementById("username").value.trim();
   currentRoom = document.getElementById("room").value.trim();
@@ -49,14 +52,16 @@ function joinRoom() {
 
   encryptionKey = deriveKey(currentRoom, passphrase);
 
+  initDB(() => startChat());
+}
+
+// Start chat UI and listener
+function startChat() {
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
 
-  // Attach listener after IndexedDB ready
-  if (localDB) listenMessages();
-  else request.onsuccess = () => { listenMessages(); displayMessages(); };
-
-  displayMessages(); // show any existing messages immediately
+  listenMessages();
+  displayMessages();
 }
 
 // Encrypt / Decrypt
@@ -89,13 +94,12 @@ function sendMessage() {
 
   if (mode === "storage") {
     storeLocalMessage(text, username);
-    displayMessages(); // force immediate display in single device
   }
 
   msgBox.value = "";
 }
 
-// Listen messages (attach only once)
+// Listen messages from Firebase
 function listenMessages() {
   if (listenerAttached) return;
   listenerAttached = true;
@@ -127,9 +131,10 @@ function storeLocalMessage(text, senderID) {
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
   store.add({ room: currentRoom, sender: senderID, text, timestamp: Date.now() });
+  tx.oncomplete = displayMessages; // refresh after storing
 }
 
-// Display messages
+// Display messages from local DB
 function displayMessages() {
   if (!localDB) return;
   const container = document.getElementById("messages");
@@ -137,22 +142,21 @@ function displayMessages() {
 
   const tx = localDB.transaction(["messages"], "readonly");
   const store = tx.objectStore("messages");
-  const request = store.getAll();
-  request.onsuccess = e => {
-    e.target.result
-      .filter(msg => msg.room === currentRoom)
-      .forEach(msg => {
-        const div = document.createElement("div");
-        div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
-        div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
-          <button onclick="deleteMessage(${msg.id})">🗑️</button>`;
-        container.appendChild(div);
-      });
+  const req = store.getAll();
+  req.onsuccess = e => {
+    const msgs = e.target.result.filter(msg => msg.room === currentRoom);
+    msgs.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
+      div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
+        <button onclick="deleteMessage(${msg.id})">🗑️</button>`;
+      container.appendChild(div);
+    });
     container.scrollTop = container.scrollHeight;
   };
 }
 
-// Delete one message
+// Delete one message locally
 function deleteMessage(id) {
   if (!localDB) return;
   const tx = localDB.transaction(["messages"], "readwrite");
@@ -187,4 +191,14 @@ function leaveRoom() {
   encryptionKey = "";
 }
 
-//
+// Periodic cleanup for Vanish Mode
+setInterval(() => {
+  if (!currentRoom) return;
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`);
+  msgRef.once("value", snapshot => {
+    snapshot.forEach(child => {
+      const msg = child.val();
+      if (msg.vanish && Date.now() - msg.timestamp > 24*60*60*1000) child.ref.remove();
+    });
+  });
+}, 60*60*1000); // every 1 hour
