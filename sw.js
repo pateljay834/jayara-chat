@@ -1,4 +1,4 @@
-const CACHE_NAME = "jayara-cache-v3"; // increment version
+const CACHE_NAME = "jayara-cache-v3"; // Increment version when updating
 const urlsToCache = [
   "./",
   "./index.html",
@@ -7,15 +7,15 @@ const urlsToCache = [
   "./manifest.json"
 ];
 
-// Install service worker and cache core files
+// Install SW and cache files
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
-  self.skipWaiting(); // activate new SW immediately
+  self.skipWaiting();
 });
 
-// Activate and remove old caches
+// Activate SW and remove old caches
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -26,7 +26,7 @@ self.addEventListener("activate", event => {
       )
     )
   );
-  self.clients.claim(); // take control immediately
+  self.clients.claim();
 });
 
 // Fetch handler
@@ -34,11 +34,9 @@ self.addEventListener("fetch", event => {
   const url = event.request.url;
 
   // Allow Firebase requests to go to network directly
-  if (url.includes("firebaseio.com") || url.includes("fcm.googleapis.com")) {
-    return; // do not intercept Firebase requests
-  }
+  if (url.includes("firebaseio.com") || url.includes("fcm.googleapis.com")) return;
 
-  // Network first, fallback to cache for other requests
+  // Network first, fallback to cache
   event.respondWith(
     fetch(event.request)
       .then(response => response)
