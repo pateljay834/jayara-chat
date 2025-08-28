@@ -107,14 +107,12 @@ input, select, button {
 }
 
 #sendBtn {
-  width: 60px;          /* smaller and fixed size */
+  width: 60px;
   background: #317EFB;
   color: white;
   border: none;
   border-radius: 12px;
   font-size: 1em;
-  cursor: pointer;
-  transition: 0.2s;
 }
 
 #sendBtn:hover {
