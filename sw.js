@@ -7,29 +7,30 @@ const urlsToCache = [
   "./manifest.json"
 ];
 
-// Install Service Worker and cache files
+// Install SW and cache files
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// Fetch from cache if offline
+// Fetch from cache first, then network
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
   );
 });
 
-// Activate & clean old caches
+// Activate SW & clean old caches
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys => 
-      Promise.all(
+    caches.keys().then(keys => {
+      return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) return caches.delete(key);
         })
-      )
-    )
+      );
+    })
   );
 });
