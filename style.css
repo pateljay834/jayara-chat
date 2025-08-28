@@ -1,3 +1,4 @@
+/* Global Styles */
 body {
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg, #6dd5ed, #2193b0);
@@ -6,6 +7,7 @@ body {
   padding: 0;
 }
 
+/* Chat container */
 #chat {
   max-width: 480px;
   margin: 30px auto;
@@ -15,6 +17,7 @@ body {
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
+/* Messages area */
 #messages {
   height: 320px;
   overflow-y: auto;
@@ -26,6 +29,7 @@ body {
   background: #fafafa;
 }
 
+/* Inputs and selects */
 input, select {
   padding: 10px;
   margin: 6px;
@@ -33,8 +37,10 @@ input, select {
   max-width: 400px;
   border: 1px solid #ccc;
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
+/* Message input row */
 #msgRow {
   display: flex;
   justify-content: space-between;
@@ -42,13 +48,16 @@ input, select {
   gap: 8px;
 }
 
+/* Message box */
 #msgBox {
   flex: 1;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
+/* Buttons */
 button {
   padding: 10px 14px;
   margin: 6px 0;
@@ -59,12 +68,14 @@ button {
   cursor: pointer;
   font-size: 14px;
   white-space: nowrap;
+  transition: background 0.2s;
 }
 
 button:hover {
   background: #255ec7;
 }
 
+/* Individual message */
 .msg {
   margin: 6px 0;
   padding: 8px 12px;
@@ -75,32 +86,42 @@ button:hover {
   align-items: center;
 }
 
+/* Message from me */
 .me {
   background: #d1e7ff;
   text-align: right;
 }
 
+/* Message from others */
 .other {
   background: #f1f1f1;
   text-align: left;
 }
 
+/* Username label */
 .username {
   font-weight: bold;
   font-size: 0.85em;
   margin-right: 5px;
 }
 
-#deleteBtn {
-  background: #e74c3c;
+/* Delete button inside messages */
+.msg button {
+  background: transparent;
+  color: #e74c3c;
+  padding: 2px 6px;
+  font-size: 12px;
+  border-radius: 4px;
 }
 
-#deleteBtn:hover {
+.msg button:hover {
   background: #c0392b;
+  color: white;
 }
 
+/* Leave button */
 #leaveBtn {
-  background: #f39c12;
+  background: #e67e22;
 }
 
 #leaveBtn:hover {
