@@ -17,27 +17,78 @@ let currentUser = "";
 let currentRoom = "";
 let currentMode = "";
 let messagesRef = null;
+let roomKey = null; // AES-GCM key for encryption
+
+// ------------------ Crypto Helpers ------------------
+async function generateKeyFromPassphrase(passphrase) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: enc.encode("jayara_salt_" + currentRoom),
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptMessage(text) {
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipherBuffer = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    roomKey,
+    enc.encode(text)
+  );
+  return { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(cipherBuffer)) };
+}
+
+async function decryptMessage(data) {
+  const dec = new TextDecoder();
+  try {
+    const plainBuffer = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(data.iv) },
+      roomKey,
+      new Uint8Array(data.ciphertext)
+    );
+    return dec.decode(plainBuffer);
+  } catch {
+    return "🔒 Unable to decrypt message";
+  }
+}
 
 // ------------------ Join Room ------------------
-function joinRoom() {
+async function joinRoom() {
   const username = document.getElementById("username").value.trim();
   const room = document.getElementById("room").value.trim();
   const mode = document.getElementById("mode").value;
 
   if (!username || !room) return alert("Enter your name and room code");
 
+  // Ask for room passphrase for encryption
+  const passphrase = prompt("Enter room passphrase for encryption:");
+  if (!passphrase) return alert("Passphrase required for encryption");
+  roomKey = await generateKeyFromPassphrase(passphrase);
+
   // Remove any previous listener
-  if (messagesRef) {
-    messagesRef.off();
-    console.log("✅ Previous listener removed");
-  }
+  if (messagesRef) messagesRef.off();
 
   currentUser = username;
   currentRoom = room;
   currentMode = mode;
 
   if (mode === "storage") {
-    localStorage.setItem("jayaraUser", JSON.stringify({ username, room, mode }));
+    localStorage.setItem(
+      "jayaraUser",
+      JSON.stringify({ username, room, mode, passphrase })
+    );
   }
 
   document.getElementById("chatArea").style.display = "block";
@@ -46,27 +97,29 @@ function joinRoom() {
 
   messagesRef = db.ref("messages/" + room);
 
-  // Attach listener
-  messagesRef.on("child_added", snapshot => {
+  // Attach listener for incoming messages
+  messagesRef.on("child_added", async snapshot => {
     const msg = snapshot.val();
     if (!msg) return;
-    displayMessage(msg.username, msg.text);
+    const text = msg.ciphertext ? await decryptMessage(msg) : msg.text;
+    displayMessage(msg.username, text);
   });
 
   console.log(`🔑 Joined room "${room}" as "${username}" in ${mode} mode`);
 }
 
 // ------------------ Send Message ------------------
-function sendMessage() {
+async function sendMessage() {
   const msgBox = document.getElementById("msgBox");
   const text = msgBox.value.trim();
   if (!text || !currentRoom || !currentUser) return;
 
+  const encrypted = await encryptMessage(text);
   const newMsgRef = db.ref("messages/" + currentRoom).push();
   newMsgRef
     .set({
       username: currentUser,
-      text: text,
+      ...encrypted,
       timestamp: Date.now()
     })
     .then(() => console.log("✅ Message delivered:", text))
@@ -96,4 +149,78 @@ function leaveRoom() {
   localStorage.removeItem("jayaraUser");
   currentUser = "";
   currentRoom = "";
-  currentMode =
+  currentMode = "";
+  roomKey = null;
+
+  console.log("🚪 Left the room and cleared listener");
+}
+
+// ------------------ Delete All Messages ------------------
+function deleteAllMessages() {
+  if (!currentRoom) return;
+  db.ref("messages/" + currentRoom)
+    .remove()
+    .then(() => {
+      document.getElementById("messages").innerHTML = "";
+      console.log("🗑 All messages deleted");
+    })
+    .catch(err => console.error("❌ Delete failed:", err));
+}
+
+// ------------------ Display Message ------------------
+function displayMessage(username, text) {
+  const messagesDiv = document.getElementById("messages");
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("msg");
+
+  if (username === currentUser) {
+    msgDiv.classList.add("me");
+    msgDiv.innerHTML = `<span class="username">Me:</span> ${text}`;
+  } else {
+    msgDiv.classList.add("other");
+    msgDiv.innerHTML = `<span class="username">${username}:</span> ${text}`;
+  }
+
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// ------------------ Auto-Join Storage Mode ------------------
+async function autoJoinIfStored() {
+  const saved = localStorage.getItem("jayaraUser");
+  if (!saved) return;
+
+  const { username, room, mode, passphrase } = JSON.parse(saved);
+  document.getElementById("username").value = username;
+  document.getElementById("room").value = room;
+  document.getElementById("mode").value = mode;
+
+  // Use stored passphrase or ask if missing
+  let keyPassphrase = passphrase;
+  if (!keyPassphrase) {
+    keyPassphrase = prompt(`Enter passphrase to join room "${room}"`);
+    if (!keyPassphrase) return alert("Passphrase required to decrypt messages");
+    localStorage.setItem(
+      "jayaraUser",
+      JSON.stringify({ username, room, mode, passphrase: keyPassphrase })
+    );
+  }
+
+  roomKey = await generateKeyFromPassphrase(keyPassphrase);
+
+  joinRoom();
+
+  const messagesDiv = document.getElementById("messages");
+  const info = document.createElement("div");
+  info.classList.add("msg");
+  info.style.background = "#e6ffe6";
+  info.style.textAlign = "center";
+  info.innerText = `🔄 Rejoined ${room} as ${username} (Storage Mode)`;
+  messagesDiv.appendChild(info);
+}
+
+// ------------------ Enter Key Sends ------------------
+document.addEventListener("DOMContentLoaded", autoJoinIfStored);
+document.getElementById("msgBox").addEventListener("keypress", e => {
+  if (e.key === "Enter") sendMessage();
+});
