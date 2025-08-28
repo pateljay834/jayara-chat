@@ -24,6 +24,9 @@ function joinRoom() {
 
   if (!username || !room) return alert("Enter your name and room code");
 
+  // Remove any previous listener to avoid duplicates
+  if (messagesRef) messagesRef.off();
+
   currentUser = username;
   currentRoom = room;
   currentMode = mode;
@@ -37,6 +40,8 @@ function joinRoom() {
   document.getElementById("deleteBtn").style.display = "inline-block";
 
   messagesRef = db.ref("messages/" + room);
+
+  // Attach listener only once
   messagesRef.on("child_added", snapshot => {
     const msg = snapshot.val();
     displayMessage(msg.username, msg.text);
@@ -47,7 +52,7 @@ function joinRoom() {
 function sendMessage() {
   const msgBox = document.getElementById("msgBox");
   const text = msgBox.value.trim();
-  if (!text) return;
+  if (!text || !currentRoom || !currentUser) return;
 
   db.ref("messages/" + currentRoom).push({
     username: currentUser,
