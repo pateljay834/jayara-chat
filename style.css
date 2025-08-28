@@ -1,3 +1,4 @@
+/* -------------------- Body & Chat Container -------------------- */
 body {
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg, #6dd5ed, #2193b0);
@@ -15,6 +16,7 @@ body {
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
+/* -------------------- Messages -------------------- */
 #messages {
   height: 320px;
   overflow-y: auto;
@@ -26,6 +28,7 @@ body {
   background: #fafafa;
 }
 
+/* -------------------- Inputs -------------------- */
 input, select {
   padding: 10px;
   margin: 6px;
@@ -33,6 +36,7 @@ input, select {
   max-width: 400px;
   border: 1px solid #ccc;
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
 #msgRow {
@@ -49,6 +53,7 @@ input, select {
   border: 1px solid #ccc;
 }
 
+/* -------------------- Buttons -------------------- */
 button {
   padding: 10px 14px;
   margin: 6px 0;
@@ -65,11 +70,21 @@ button:hover {
   background: #255ec7;
 }
 
+#deleteBtn {
+  background: #e74c3c;
+}
+
+#deleteBtn:hover {
+  background: #c0392b;
+}
+
+/* -------------------- Message Styling -------------------- */
 .msg {
   margin: 6px 0;
   padding: 8px 12px;
   border-radius: 8px;
   word-wrap: break-word;
+  position: relative;
 }
 
 .me {
@@ -79,6 +94,7 @@ button:hover {
 
 .other {
   background: #f1f1f1;
+  text-align: left;
 }
 
 .username {
@@ -87,10 +103,35 @@ button:hover {
   margin-right: 5px;
 }
 
-#deleteBtn {
-  background: #e74c3c;
+/* -------------------- Delete Button on Messages -------------------- */
+.msg button {
+  background: transparent;
+  color: #e74c3c;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  position: absolute;
+  top: 2px;
+  right: 4px;
 }
 
-#deleteBtn:hover {
-  background: #c0392b;
+.msg button:hover {
+  color: #c0392b;
+}
+
+/* -------------------- Responsive -------------------- */
+@media screen and (max-width: 500px) {
+  #chat {
+    width: 95%;
+    margin: 20px auto;
+    padding: 15px;
+  }
+  input, select, button {
+    width: 100%;
+    margin: 4px 0;
+  }
+  #msgRow {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
