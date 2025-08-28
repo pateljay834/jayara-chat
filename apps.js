@@ -17,11 +17,11 @@ let currentMode = "vanish";
 let currentUser = "";
 let roomRef = null;
 
-// Register service worker for PWA
+// Register SW for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('Service Worker registered'))
+      .then(reg => console.log('SW registered for PWA'))
       .catch(err => console.log('SW registration failed:', err));
   });
 }
