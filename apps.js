@@ -225,3 +225,35 @@ document.addEventListener("DOMContentLoaded", autoJoinIfStored);
 document.getElementById("msgBox").addEventListener("keypress", e => {
   if (e.key === "Enter") sendMessage();
 });
+
+async function requestNotificationPermission() {
+  if ('Notification' in window && 'serviceWorker' in navigator) {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log("✅ Notifications allowed");
+      initFCM();
+    }
+  }
+}
+
+async function initFCM() {
+  const messaging = firebase.messaging();
+  try {
+    const token = await messaging.getToken({
+      vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0"
+    });
+    console.log("FCM Token:", token);
+    // Later: Save this token in Firebase DB per user/device
+  } catch (err) {
+    console.error("Error getting FCM token:", err);
+  }
+
+  // Foreground message display
+  messaging.onMessage(payload => {
+    const { title, body } = payload.notification || {};
+    if (title && body) new Notification(title, { body, icon: 'icon-192.png' });
+  });
+}
+
+// Call once at app startup
+requestNotificationPermission();
