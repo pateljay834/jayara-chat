@@ -36,7 +36,7 @@ function initDB(callback) {
   request.onerror = () => alert("IndexedDB failed to open");
 }
 
-// Generate AES key from room + passphrase
+// AES Key
 function deriveKey(room, passphrase) {
   return CryptoJS.SHA256(room + passphrase).toString();
 }
@@ -55,7 +55,7 @@ function joinRoom() {
   initDB(() => startChat());
 }
 
-// Start chat UI and listener
+// Start chat
 function startChat() {
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
@@ -65,9 +65,7 @@ function startChat() {
 }
 
 // Encrypt / Decrypt
-function encryptMessage(msg) {
-  return CryptoJS.AES.encrypt(msg, encryptionKey).toString();
-}
+function encryptMessage(msg) { return CryptoJS.AES.encrypt(msg, encryptionKey).toString(); }
 function decryptMessage(cipher) {
   try { return CryptoJS.AES.decrypt(cipher, encryptionKey).toString(CryptoJS.enc.Utf8); }
   catch { return "[Cannot decrypt]"; }
@@ -92,14 +90,12 @@ function sendMessage() {
 
   msgRef.set(msgObj);
 
-  if (mode === "storage") {
-    storeLocalMessage(text, username);
-  }
+  if (mode === "storage") storeLocalMessage(text, username);
 
   msgBox.value = "";
 }
 
-// Listen messages from Firebase
+// Listen messages
 function listenMessages() {
   if (listenerAttached) return;
   listenerAttached = true;
@@ -113,28 +109,24 @@ function listenMessages() {
 
     snapshot.ref.child("deliveredTo").child(username).set(true);
 
-    // Remove message in vanish mode or after 24h
-    snapshot.ref.child("deliveredTo").once("value").then(ds => {
-      const allDelivered = Object.values(ds.val()).every(v => v === true);
-      if ((mode === "vanish" && allDelivered) || (data.vanish && Date.now() - data.timestamp > 24*60*60*1000)) {
-        snapshot.ref.remove();
-      }
-    });
+    if ((mode === "vanish" && data.deliveredTo[username]) || (data.vanish && Date.now() - data.timestamp > 24*60*60*1000)) {
+      snapshot.ref.remove();
+    }
 
     displayMessages();
   });
 }
 
-// Store locally (Storage Mode)
+// Store locally
 function storeLocalMessage(text, senderID) {
   if (!localDB) return;
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
   store.add({ room: currentRoom, sender: senderID, text, timestamp: Date.now() });
-  tx.oncomplete = displayMessages; // refresh after storing
+  tx.oncomplete = displayMessages;
 }
 
-// Display messages from local DB
+// Display messages
 function displayMessages() {
   if (!localDB) return;
   const container = document.getElementById("messages");
@@ -169,21 +161,14 @@ function clearLocalMessages() {
   if (!localDB) return;
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
-  const request = store.getAll();
-  request.onsuccess = e => {
-    e.target.result.forEach(msg => store.delete(msg.id));
-  };
+  store.clear();
   tx.oncomplete = displayMessages;
 }
 
 // Leave room
 function leaveRoom() {
-  if (currentRoom) {
-    const msgRef = db.ref(`rooms/${currentRoom}/messages`);
-    msgRef.off();
-  }
+  if (currentRoom) db.ref(`rooms/${currentRoom}/messages`).off();
   listenerAttached = false;
-
   document.getElementById("chatArea").style.display = "none";
   document.getElementById("leaveBtn").style.display = "none";
   currentRoom = "";
@@ -191,7 +176,7 @@ function leaveRoom() {
   encryptionKey = "";
 }
 
-// Periodic cleanup for Vanish Mode
+// Vanish mode cleanup every 1 hour
 setInterval(() => {
   if (!currentRoom) return;
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
@@ -201,4 +186,4 @@ setInterval(() => {
       if (msg.vanish && Date.now() - msg.timestamp > 24*60*60*1000) child.ref.remove();
     });
   });
-}, 60*60*1000); // every 1 hour
+}, 60*60*1000);
