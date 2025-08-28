@@ -30,11 +30,6 @@ request.onupgradeneeded = e => {
 };
 request.onsuccess = e => { localDB = e.target.result; };
 
-// Auto-fill room & passphrase from invite link
-const params = new URLSearchParams(window.location.search);
-if (params.get("room")) document.getElementById("room").value = params.get("room");
-if (params.get("pass")) document.getElementById("passphrase").value = params.get("pass");
-
 // Generate AES key from room + passphrase
 function deriveKey(room, passphrase) {
   return CryptoJS.SHA256(room + passphrase).toString();
@@ -52,17 +47,6 @@ function joinRoom() {
   encryptionKey = deriveKey(currentRoom, passphrase);
   document.getElementById("chatArea").style.display = "block";
   listenMessages();
-}
-
-// Create invite link
-function createInviteLink() {
-  const room = document.getElementById("room").value.trim();
-  const pass = document.getElementById("passphrase").value.trim();
-  if (!room || !pass) { alert("Enter room & passphrase!"); return; }
-  const link = `${location.origin}/index.html?room=${room}&pass=${pass}`;
-  document.getElementById("inviteLink").innerText = link;
-  navigator.clipboard.writeText(link);
-  alert("Invite link copied!");
 }
 
 // Encrypt/Decrypt messages
@@ -93,12 +77,13 @@ function sendMessage() {
 
   msgRef.set(msgObj);
 
+  // Only store locally if Storage Mode
   if (mode === "storage") storeLocalMessage(text, username);
 
   msgBox.value = "";
 }
 
-// Listen for messages (attach only once)
+// Listen for messages (attach once)
 function listenMessages() {
   if (listenerAttached) return;
   listenerAttached = true;
@@ -108,6 +93,7 @@ function listenMessages() {
     const data = snapshot.val();
     const decrypted = decryptMessage(data.ciphertext);
 
+    // Store locally only for Storage Mode
     if (mode === "storage") storeLocalMessage(decrypted, data.senderDevice);
 
     snapshot.ref.child("deliveredTo").child(username).set(true);
@@ -118,22 +104,22 @@ function listenMessages() {
         snapshot.ref.remove();
       }
     });
+
+    displayMessages(); // Always update display from listener
   });
-  displayMessages();
 }
 
-// Store message locally
+// Store message locally (Storage Mode)
 function storeLocalMessage(text, senderID) {
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
   store.add({ room: currentRoom, sender: senderID, text, timestamp: Date.now() });
-  tx.oncomplete = displayMessages;
 }
 
 // Display messages
 function displayMessages() {
   const container = document.getElementById("messages");
-  container.innerHTML = ""; // clear old messages
+  container.innerHTML = "";
 
   const tx = localDB.transaction(["messages"], "readonly");
   const store = tx.objectStore("messages");
