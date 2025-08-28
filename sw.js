@@ -1,4 +1,5 @@
-const CACHE_NAME = "jayara-cache-v1";
+const CACHE_NAME = "jayara-cache-v2"; // increment version
+
 const urlsToCache = [
   "./",
   "./index.html",
@@ -10,19 +11,9 @@ const urlsToCache = [
 // Install SW and cache files
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
-});
-
-// Serve from cache if offline
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
-  );
+  self.skipWaiting(); // forces the new SW to activate immediately
 });
 
 // Activate & clean old caches
@@ -31,11 +22,10 @@ self.addEventListener("activate", event => {
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
+          if (key !== CACHE_NAME) return caches.delete(key);
         })
       );
     })
   );
+  self.clients.claim(); // take control of all clients immediately
 });
