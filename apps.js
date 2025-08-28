@@ -17,6 +17,15 @@ let currentMode = "vanish";
 let currentUser = "";
 let roomRef = null;
 
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+
 document.getElementById("joinBtn").addEventListener("click", joinRoom);
 document.getElementById("sendBtn").addEventListener("click", sendMessage);
 document.getElementById("deleteAllBtn").addEventListener("click", deleteAllMessages);
@@ -33,17 +42,14 @@ function joinRoom() {
   const roomPath = "rooms/" + currentRoom;
   roomRef = db.ref(roomPath);
 
-  // Vanish Mode: clear previous messages
   if (currentMode === "vanish") {
     roomRef.remove();
   }
 
-  // Listen for new messages
   roomRef.on("child_added", snap => {
     const data = snap.val();
     if (!data) return;
 
-    // Storage Mode: auto-delete messages older than 15 days
     if (currentMode === "storage" && Date.now() - data.time > 15*24*60*60*1000) {
       snap.ref.remove();
       return;
