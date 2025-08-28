@@ -1,4 +1,4 @@
-// ✅ Firebase Config (compat version)
+// ✅ Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -30,7 +30,8 @@ function joinRoom() {
   roomRef = db.ref("rooms/" + currentRoom);
 
   document.getElementById("chatArea").style.display = "block";
-  document.getElementById("leaveBtn").style.display = "inline-block"; // show Leave
+  document.getElementById("leaveBtn").style.display = "inline-block";
+  document.getElementById("deleteBtn").style.display = currentMode === "storage" ? "inline-block" : "none";
   document.getElementById("messages").innerHTML = "";
 
   roomRef.on("child_added", snap => {
@@ -70,15 +71,28 @@ function sendMessage() {
 // Leave a room
 function leaveRoom() {
   if (roomRef) {
-    roomRef.off(); // stop listening
     if (currentMode === "vanish") {
-      roomRef.remove(); // delete messages
+      if (confirm("Leaving will delete all messages in this room. Continue?")) {
+        roomRef.remove();
+      }
     }
+    roomRef.off();
   }
 
   document.getElementById("chatArea").style.display = "none";
   document.getElementById("leaveBtn").style.display = "none";
+  document.getElementById("deleteBtn").style.display = "none";
   document.getElementById("messages").innerHTML = "";
   currentRoom = null;
   roomRef = null;
+}
+
+// Delete all messages manually (storage mode)
+function deleteAllMessages() {
+  if (roomRef && currentMode === "storage") {
+    if (confirm("Are you sure you want to delete all messages in this room?")) {
+      roomRef.remove();
+      document.getElementById("messages").innerHTML = "";
+    }
+  }
 }
