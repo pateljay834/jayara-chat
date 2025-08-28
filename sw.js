@@ -7,31 +7,20 @@ const urlsToCache = [
   "./manifest.json"
 ];
 
-// Install SW and cache files
+// Cache install
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
 });
 
-// Serve from cache if offline
+// Serve from cache
 self.addEventListener("fetch", event => {
-  const url = event.request.url;
-
-  // Don't intercept Firebase or FCM requests
-  if (url.includes("firebaseio.com") || url.includes("fcm.googleapis.com")) return;
-
-  event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
-  );
+  event.respondWith(caches.match(event.request).then(resp => resp || fetch(event.request)));
 });
 
-// Activate & clean old caches
+// Clean old caches
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => key !== CACHE_NAME && caches.delete(key)))
-    )
+    caches.keys().then(keys => Promise.all(keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null)))
   );
 });
 
@@ -48,7 +37,6 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-
 messaging.onBackgroundMessage(payload => {
   const notificationTitle = payload.notification?.title || "Jayara Chat";
   const notificationOptions = {
