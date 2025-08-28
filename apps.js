@@ -1,22 +1,24 @@
-// Firebase Initialization
+// Firebase Configuration (Compat SDK)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
+  authDomain: "jayara-web.firebaseapp.com",
+  databaseURL: "https://jayara-web-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "jayara-web",
+  storageBucket: "jayara-web.firebasestorage.app",
+  messagingSenderId: "342182893596",
+  appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
-firebase.initializeApp(firebaseConfig);
 
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
 let currentUser = "";
 let currentRoom = "";
 let currentMode = "";
-let messagesRef;
+let messagesRef = null;
 
-// Join Room
+// ------------------ Join Room ------------------
 function joinRoom() {
   const username = document.getElementById("username").value.trim();
   const room = document.getElementById("room").value.trim();
@@ -24,8 +26,11 @@ function joinRoom() {
 
   if (!username || !room) return alert("Enter your name and room code");
 
-  // Remove any previous listener to avoid duplicates
-  if (messagesRef) messagesRef.off();
+  // Remove any previous listener
+  if (messagesRef) {
+    messagesRef.off();
+    console.log("✅ Previous listener removed");
+  }
 
   currentUser = username;
   currentRoom = room;
@@ -41,29 +46,36 @@ function joinRoom() {
 
   messagesRef = db.ref("messages/" + room);
 
-  // Attach listener only once
+  // Attach listener
   messagesRef.on("child_added", snapshot => {
     const msg = snapshot.val();
+    if (!msg) return;
     displayMessage(msg.username, msg.text);
   });
+
+  console.log(`🔑 Joined room "${room}" as "${username}" in ${mode} mode`);
 }
 
-// Send Message
+// ------------------ Send Message ------------------
 function sendMessage() {
   const msgBox = document.getElementById("msgBox");
   const text = msgBox.value.trim();
   if (!text || !currentRoom || !currentUser) return;
 
-  db.ref("messages/" + currentRoom).push({
-    username: currentUser,
-    text: text,
-    timestamp: Date.now()
-  });
+  const newMsgRef = db.ref("messages/" + currentRoom).push();
+  newMsgRef
+    .set({
+      username: currentUser,
+      text: text,
+      timestamp: Date.now()
+    })
+    .then(() => console.log("✅ Message delivered:", text))
+    .catch(err => console.error("❌ Message delivery failed:", err));
 
   msgBox.value = "";
 }
 
-// Leave Room
+// ------------------ Leave Room ------------------
 function leaveRoom() {
   if (messagesRef) messagesRef.off();
 
@@ -74,7 +86,7 @@ function leaveRoom() {
   info.classList.add("msg");
   info.style.background = "#ffe6e6";
   info.style.textAlign = "center";
-  info.innerText = `🚪 Session Ended. You left the room.`;
+  info.innerText = `🚪 You left the room.`;
   messagesDiv.appendChild(info);
 
   document.getElementById("chatArea").style.display = "none";
@@ -85,17 +97,23 @@ function leaveRoom() {
   currentUser = "";
   currentRoom = "";
   currentMode = "";
+
+  console.log("🚪 Left the room and cleared listener");
 }
 
-// Delete All Messages
+// ------------------ Delete All Messages ------------------
 function deleteAllMessages() {
-  if (currentRoom) {
-    db.ref("messages/" + currentRoom).remove();
-    document.getElementById("messages").innerHTML = "";
-  }
+  if (!currentRoom) return;
+  db.ref("messages/" + currentRoom)
+    .remove()
+    .then(() => {
+      document.getElementById("messages").innerHTML = "";
+      console.log("🗑 All messages deleted");
+    })
+    .catch(err => console.error("❌ Delete failed:", err));
 }
 
-// Display Message
+// ------------------ Display Message ------------------
 function displayMessage(username, text) {
   const messagesDiv = document.getElementById("messages");
   const msgDiv = document.createElement("div");
@@ -113,30 +131,29 @@ function displayMessage(username, text) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Auto Join if Storage Mode
+// ------------------ Auto-Join Storage Mode ------------------
 function autoJoinIfStored() {
   const saved = localStorage.getItem("jayaraUser");
-  if (saved) {
-    const { username, room, mode } = JSON.parse(saved);
-    document.getElementById("username").value = username;
-    document.getElementById("room").value = room;
-    document.getElementById("mode").value = mode;
+  if (!saved) return;
 
-    joinRoom();
+  const { username, room, mode } = JSON.parse(saved);
+  document.getElementById("username").value = username;
+  document.getElementById("room").value = room;
+  document.getElementById("mode").value = mode;
 
-    const messagesDiv = document.getElementById("messages");
-    const info = document.createElement("div");
-    info.classList.add("msg");
-    info.style.background = "#e6ffe6";
-    info.style.textAlign = "center";
-    info.innerText = `🔄 Rejoined ${room} as ${username} (Storage Mode)`;
-    messagesDiv.appendChild(info);
-  }
+  joinRoom();
+
+  const messagesDiv = document.getElementById("messages");
+  const info = document.createElement("div");
+  info.classList.add("msg");
+  info.style.background = "#e6ffe6";
+  info.style.textAlign = "center";
+  info.innerText = `🔄 Rejoined ${room} as ${username} (Storage Mode)`;
+  messagesDiv.appendChild(info);
 }
 
+// ------------------ Enter Key Sends ------------------
 document.addEventListener("DOMContentLoaded", autoJoinIfStored);
-
-// Enter key sends message
 document.getElementById("msgBox").addEventListener("keypress", e => {
   if (e.key === "Enter") sendMessage();
 });
