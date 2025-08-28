@@ -1,4 +1,4 @@
-// Firebase config
+// -------------------- Firebase --------------------
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -8,19 +8,17 @@ const firebaseConfig = {
   messagingSenderId: "342182893596",
   appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
-
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// App variables
+// -------------------- App State --------------------
 let currentRoom = "";
 let username = "";
 let mode = "storage";
 let encryptionKey = "";
 let listenerAttached = false;
 
-// IndexedDB setup
+// -------------------- IndexedDB --------------------
 let localDB;
 function initDB(callback) {
   const request = indexedDB.open("JayaraDB", 1);
@@ -36,12 +34,17 @@ function initDB(callback) {
   request.onerror = () => alert("IndexedDB failed to open");
 }
 
-// AES Key
+// -------------------- Encryption --------------------
 function deriveKey(room, passphrase) {
   return CryptoJS.SHA256(room + passphrase).toString();
 }
+function encryptMessage(msg) { return CryptoJS.AES.encrypt(msg, encryptionKey).toString(); }
+function decryptMessage(cipher) {
+  try { return CryptoJS.AES.decrypt(cipher, encryptionKey).toString(CryptoJS.enc.Utf8); }
+  catch { return "[Cannot decrypt]"; }
+}
 
-// Join room
+// -------------------- Join Room --------------------
 function joinRoom() {
   username = document.getElementById("username").value.trim();
   currentRoom = document.getElementById("room").value.trim();
@@ -55,61 +58,38 @@ function joinRoom() {
   initDB(() => startChat());
 }
 
-// Start chat
+// -------------------- Start Chat --------------------
 function startChat() {
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
-
-  listenMessages();
+  if (mode === "storage") document.getElementById("deleteBtn").style.display = "inline-block";
+  attachListener();
   displayMessages();
 }
 
-// Encrypt / Decrypt
-function encryptMessage(msg) { return CryptoJS.AES.encrypt(msg, encryptionKey).toString(); }
-function decryptMessage(cipher) {
-  try { return CryptoJS.AES.decrypt(cipher, encryptionKey).toString(CryptoJS.enc.Utf8); }
-  catch { return "[Cannot decrypt]"; }
-}
-
-// Send message
-function sendMessage() {
-  const msgBox = document.getElementById("msgBox");
-  let text = msgBox.value.trim();
-  if (!text) return;
-
-  const encrypted = encryptMessage(text);
-  const msgRef = db.ref(`rooms/${currentRoom}/messages`).push();
-
-  const msgObj = {
-    senderDevice: username + "_" + Date.now(),
-    ciphertext: encrypted,
-    timestamp: Date.now(),
-    deliveredTo: { [username]: false },
-    vanish: (mode === "vanish")
-  };
-
-  msgRef.set(msgObj);
-
-  if (mode === "storage") storeLocalMessage(text, username);
-
-  msgBox.value = "";
-}
-
-// Listen messages
-function listenMessages() {
+// -------------------- Firebase Listener --------------------
+function attachListener() {
   if (listenerAttached) return;
   listenerAttached = true;
 
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
+  msgRef.off(); // Remove old listeners to prevent duplicates
+
   msgRef.on("child_added", snapshot => {
     const data = snapshot.val();
+    if (!data || !data.ciphertext) return;
+
     const decrypted = decryptMessage(data.ciphertext);
+    const senderName = data.senderName || "Unknown";
 
-    if (mode === "storage") storeLocalMessage(decrypted, data.senderDevice);
+    // Store locally only in storage mode
+    if (mode === "storage" && !data.vanish) storeLocalMessage(decrypted, data.senderID, senderName);
 
+    // Update delivered status
     snapshot.ref.child("deliveredTo").child(username).set(true);
 
-    if ((mode === "vanish" && data.deliveredTo[username]) || (data.vanish && Date.now() - data.timestamp > 24*60*60*1000)) {
+    // Vanish mode: auto-delete after 24h or if delivered
+    if (data.vanish && (data.deliveredTo && data.deliveredTo[username] || Date.now() - data.timestamp > 24*60*60*1000)) {
       snapshot.ref.remove();
     }
 
@@ -117,12 +97,36 @@ function listenMessages() {
   });
 }
 
-// Store locally
-function storeLocalMessage(text, senderID) {
+// -------------------- Send Message --------------------
+function sendMessage() {
+  const msgBox = document.getElementById("msgBox");
+  let text = msgBox.value.trim();
+  if (!text) return;
+
+  const encrypted = encryptMessage(text);
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`).push();
+  const msgObj = {
+    senderID: username + "_" + Date.now(),
+    senderName: username,
+    ciphertext: encrypted,
+    timestamp: Date.now(),
+    deliveredTo: { [username]: false },
+    vanish: (mode === "vanish")
+  };
+  msgRef.set(msgObj);
+
+  // Store locally if storage mode
+  if (mode === "storage") storeLocalMessage(text, msgObj.senderID, username);
+
+  msgBox.value = "";
+}
+
+// -------------------- IndexedDB Operations --------------------
+function storeLocalMessage(text, senderID, senderName) {
   if (!localDB) return;
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
-  store.add({ room: currentRoom, sender: senderID, text, timestamp: Date.now() });
+  store.add({ room: currentRoom, senderID, senderName, text, timestamp: Date.now() });
   tx.oncomplete = displayMessages;
 }
 
@@ -136,54 +140,4 @@ function displayMessages() {
   const store = tx.objectStore("messages");
   const req = store.getAll();
   req.onsuccess = e => {
-    const msgs = e.target.result.filter(msg => msg.room === currentRoom);
-    msgs.forEach(msg => {
-      const div = document.createElement("div");
-      div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
-      div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
-        <button onclick="deleteMessage(${msg.id})">🗑️</button>`;
-      container.appendChild(div);
-    });
-    container.scrollTop = container.scrollHeight;
-  };
-}
-
-// Delete one message locally
-function deleteMessage(id) {
-  if (!localDB) return;
-  const tx = localDB.transaction(["messages"], "readwrite");
-  tx.objectStore("messages").delete(id);
-  tx.oncomplete = displayMessages;
-}
-
-// Delete all local messages
-function clearLocalMessages() {
-  if (!localDB) return;
-  const tx = localDB.transaction(["messages"], "readwrite");
-  const store = tx.objectStore("messages");
-  store.clear();
-  tx.oncomplete = displayMessages;
-}
-
-// Leave room
-function leaveRoom() {
-  if (currentRoom) db.ref(`rooms/${currentRoom}/messages`).off();
-  listenerAttached = false;
-  document.getElementById("chatArea").style.display = "none";
-  document.getElementById("leaveBtn").style.display = "none";
-  currentRoom = "";
-  username = "";
-  encryptionKey = "";
-}
-
-// Vanish mode cleanup every 1 hour
-setInterval(() => {
-  if (!currentRoom) return;
-  const msgRef = db.ref(`rooms/${currentRoom}/messages`);
-  msgRef.once("value", snapshot => {
-    snapshot.forEach(child => {
-      const msg = child.val();
-      if (msg.vanish && Date.now() - msg.timestamp > 24*60*60*1000) child.ref.remove();
-    });
-  });
-}, 60*60*1000);
+    const msgs = e.target.result.filter
