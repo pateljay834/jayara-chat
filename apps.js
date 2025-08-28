@@ -82,7 +82,7 @@ async function joinRoom() {
 
   roomKey = await generateRoomKey(passphrase, currentRoom);
 
-  // Save device-specific storage
+  // Device-specific storage
   if (currentMode === "storage") {
     localStorage.setItem("jayara_user_" + currentRoom, currentUser);
     localStorage.setItem("jayara_pass_" + currentRoom, passphrase);
@@ -111,4 +111,73 @@ async function autoJoinRoom() {
       roomKey = await generateRoomKey(savedPass, currentRoom);
 
       setupChatListeners();
-      document.getElementById("chatArea
+      document.getElementById("chatArea").style.display = "block";
+      document.getElementById("leaveBtn").style.display = "inline-block";
+      if (currentMode === "storage") document.getElementById("deleteBtn").style.display = "inline-block";
+    }
+  }
+}
+
+// ----------------- Firebase Chat -----------------
+function setupChatListeners() {
+  messagesRef = db.ref("rooms/" + currentRoom + "/messages");
+  messagesRef.off();
+
+  messagesRef.on("child_added", async snapshot => {
+    const data = snapshot.val();
+    const text = await decryptMessage(data);
+    displayMessage(data.sender, text, data.sender === currentUser);
+  });
+}
+
+async function sendMessage() {
+  const msgBox = document.getElementById("msgBox");
+  const text = msgBox.value.trim();
+  if (!text) return;
+
+  const encrypted = await encryptMessage(text);
+  messagesRef.push({ sender: currentUser, ...encrypted, timestamp: Date.now() });
+  msgBox.value = "";
+}
+
+function displayMessage(sender, text, isMe) {
+  const messagesDiv = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = "msg " + (isMe ? "me" : "other");
+  div.innerHTML = `<span class="username">${sender}</span>: ${text}`;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// ----------------- Leave / Delete -----------------
+function leaveRoom() {
+  if (!currentRoom) return;
+  messagesRef = null;
+  roomKey = null;
+  currentRoom = null;
+  currentUser = null;
+  document.getElementById("chatArea").style.display = "none";
+
+  // Remove this device from storage
+  localStorage.removeItem("jayara_user_" + currentRoom);
+  localStorage.removeItem("jayara_pass_" + currentRoom);
+  localStorage.removeItem("jayara_mode_" + currentRoom);
+}
+
+function deleteAllMessages() {
+  if (!messagesRef) return;
+  messagesRef.remove();
+}
+
+// ----------------- Push Notifications -----------------
+async function requestNotificationPermission() {
+  if ('Notification' in window && 'serviceWorker' in navigator) {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') initFCM();
+  }
+}
+
+async function initFCM() {
+  try {
+    const token = await messaging.getToken({
+      vapidKey: "BP2a0oz
