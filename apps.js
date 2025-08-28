@@ -1,98 +1,159 @@
-// ✅ Firebase Config
+// =============================
+// 🔥 Firebase Initialization
+// =============================
 const firebaseConfig = {
-  apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
-  authDomain: "jayara-web.firebaseapp.com",
-  databaseURL: "https://jayara-web-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "jayara-web",
-  storageBucket: "jayara-web.appspot.com",
-  messagingSenderId: "342182893596",
-  appId: "1:342182893596:web:664646e95a40e60d0da7d9"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
-
 firebase.initializeApp(firebaseConfig);
+
 const db = firebase.database();
+const messaging = firebase.messaging();
 
-let currentRoom = null;
+// =============================
+// 📌 Global Variables
+// =============================
 let currentUser = "";
-let currentMode = "vanish";
-let roomRef = null;
+let currentRoom = "";
+let currentMode = "";
+let messagesRef;
 
-// Join a room
+// =============================
+// 🚀 Join Room
+// =============================
 function joinRoom() {
-  currentUser = document.getElementById("username").value.trim();
-  currentRoom = document.getElementById("room").value.trim();
-  currentMode = document.getElementById("mode").value;
+  const username = document.getElementById("username").value.trim();
+  const room = document.getElementById("room").value.trim();
+  const mode = document.getElementById("mode").value;
 
-  if (!currentUser) currentUser = "Guest";
-  if (!currentRoom) currentRoom = "defaultRoom";
+  if (!username || !room) return alert("Enter your name and room code");
 
-  if (roomRef) roomRef.off(); // stop old listener
-  roomRef = db.ref("rooms/" + currentRoom);
+  currentUser = username;
+  currentRoom = room;
+  currentMode = mode;
 
+  // Save login if storage mode
+  if (mode === "storage") {
+    localStorage.setItem("jayaraUser", JSON.stringify({ username, room, mode }));
+  }
+
+  // Show chat area
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
-  document.getElementById("deleteBtn").style.display = currentMode === "storage" ? "inline-block" : "none";
-  document.getElementById("messages").innerHTML = "";
+  document.getElementById("deleteBtn").style.display = "inline-block";
 
-  roomRef.on("child_added", snap => {
-    let data = snap.val();
-    let now = Date.now();
-
-    if (currentMode === "storage" && now - data.time > 15 * 24 * 60 * 60 * 1000) {
-      snap.ref.remove();
-      return;
-    }
-
-    let msgDiv = document.createElement("div");
-    msgDiv.classList.add("msg");
-    msgDiv.classList.add(data.user === currentUser ? "me" : "other");
-    msgDiv.innerHTML = `<span class="username">${data.user}:</span> ${data.text}`;
-
-    let messagesDiv = document.getElementById("messages");
-    messagesDiv.appendChild(msgDiv);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  // Start listening to messages
+  messagesRef = db.ref("messages/" + room);
+  messagesRef.on("child_added", snapshot => {
+    const msg = snapshot.val();
+    displayMessage(msg.username, msg.text);
   });
+
+  // Register for push notifications
+  requestNotificationPermission(username, room);
 }
 
-// Send a message
+// =============================
+// 💬 Send Message
+// =============================
 function sendMessage() {
-  let text = document.getElementById("msgBox").value.trim();
-  if (!text || !currentRoom) return;
+  const msgBox = document.getElementById("msgBox");
+  const text = msgBox.value.trim();
+  if (!text) return;
 
-  db.ref("rooms/" + currentRoom).push({
-    user: currentUser,
+  db.ref("messages/" + currentRoom).push({
+    username: currentUser,
     text: text,
-    time: Date.now()
+    timestamp: Date.now()
   });
 
-  document.getElementById("msgBox").value = "";
+  msgBox.value = "";
 }
 
-// Leave a room
+// =============================
+// 🚪 Leave Room
+// =============================
 function leaveRoom() {
-  if (roomRef) {
-    if (currentMode === "vanish") {
-      if (confirm("Leaving will delete all messages in this room. Continue?")) {
-        roomRef.remove();
-      }
-    }
-    roomRef.off();
-  }
-
+  if (messagesRef) messagesRef.off();
   document.getElementById("chatArea").style.display = "none";
+  document.getElementById("messages").innerHTML = "";
   document.getElementById("leaveBtn").style.display = "none";
   document.getElementById("deleteBtn").style.display = "none";
-  document.getElementById("messages").innerHTML = "";
-  currentRoom = null;
-  roomRef = null;
+
+  localStorage.removeItem("jayaraUser");
+
+  currentUser = "";
+  currentRoom = "";
+  currentMode = "";
 }
 
-// Delete all messages manually (storage mode)
+// =============================
+// 🗑 Delete All Messages
+// =============================
 function deleteAllMessages() {
-  if (roomRef && currentMode === "storage") {
-    if (confirm("Are you sure you want to delete all messages in this room?")) {
-      roomRef.remove();
-      document.getElementById("messages").innerHTML = "";
-    }
+  if (currentRoom) {
+    db.ref("messages/" + currentRoom).remove();
+    document.getElementById("messages").innerHTML = "";
   }
 }
+
+// =============================
+// 🔔 Push Notification Setup
+// =============================
+async function requestNotificationPermission(username, room) {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      const token = await messaging.getToken({
+        vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0"
+      });
+      if (token) {
+        console.log("FCM Token:", token);
+        // Save token under tokens/{room}/{username}
+        db.ref("tokens/" + room + "/" + username).set(token);
+      }
+    }
+  } catch (err) {
+    console.error("Unable to get permission for notifications", err);
+  }
+}
+
+// =============================
+// 📥 Display Message in UI
+// =============================
+function displayMessage(username, text) {
+  const messagesDiv = document.getElementById("messages");
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("msg");
+
+  if (username === currentUser) {
+    msgDiv.classList.add("me");
+    msgDiv.innerHTML = `<span class="username">Me:</span> ${text}`;
+  } else {
+    msgDiv.classList.add("other");
+    msgDiv.innerHTML = `<span class="username">${username}:</span> ${text}`;
+  }
+
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight; // auto-scroll
+}
+
+// =============================
+// ♻️ Auto Join if in Storage Mode
+// =============================
+function autoJoinIfStored() {
+  const saved = localStorage.getItem("jayaraUser");
+  if (saved) {
+    const { username, room, mode } = JSON.parse(saved);
+    document.getElementById("username").value = username;
+    document.getElementById("room").value = room;
+    document.getElementById("mode").value = mode;
+    joinRoom();
+  }
+}
+document.addEventListener("DOMContentLoaded", autoJoinIfStored);
