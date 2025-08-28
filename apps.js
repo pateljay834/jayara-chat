@@ -20,7 +20,7 @@ let mode = "storage";
 let encryptionKey = "";
 let listenerAttached = false;
 
-// IndexedDB setup for local messages
+// IndexedDB setup
 let localDB;
 const request = indexedDB.open("JayaraDB", 1);
 request.onupgradeneeded = e => {
@@ -30,7 +30,7 @@ request.onupgradeneeded = e => {
 };
 request.onsuccess = e => { localDB = e.target.result; };
 
-// Generate AES key from room + passphrase
+// AES key from room + passphrase
 function deriveKey(room, passphrase) {
   return CryptoJS.SHA256(room + passphrase).toString();
 }
@@ -46,10 +46,11 @@ function joinRoom() {
 
   encryptionKey = deriveKey(currentRoom, passphrase);
   document.getElementById("chatArea").style.display = "block";
+  document.getElementById("leaveBtn").style.display = "inline-block";
   listenMessages();
 }
 
-// Encrypt/Decrypt messages
+// Encrypt / Decrypt
 function encryptMessage(msg) {
   return CryptoJS.AES.encrypt(msg, encryptionKey).toString();
 }
@@ -77,13 +78,12 @@ function sendMessage() {
 
   msgRef.set(msgObj);
 
-  // Only store locally if Storage Mode
   if (mode === "storage") storeLocalMessage(text, username);
 
   msgBox.value = "";
 }
 
-// Listen for messages (attach once)
+// Listen messages (attach only once)
 function listenMessages() {
   if (listenerAttached) return;
   listenerAttached = true;
@@ -93,7 +93,6 @@ function listenMessages() {
     const data = snapshot.val();
     const decrypted = decryptMessage(data.ciphertext);
 
-    // Store locally only for Storage Mode
     if (mode === "storage") storeLocalMessage(decrypted, data.senderDevice);
 
     snapshot.ref.child("deliveredTo").child(username).set(true);
@@ -105,11 +104,11 @@ function listenMessages() {
       }
     });
 
-    displayMessages(); // Always update display from listener
+    displayMessages();
   });
 }
 
-// Store message locally (Storage Mode)
+// Store locally (Storage Mode)
 function storeLocalMessage(text, senderID) {
   const tx = localDB.transaction(["messages"], "readwrite");
   const store = tx.objectStore("messages");
@@ -126,7 +125,7 @@ function displayMessages() {
   const request = store.getAll();
   request.onsuccess = e => {
     e.target.result.forEach(msg => {
-      if (msg.room !== currentRoom) return; // show only current room
+      if (msg.room !== currentRoom) return;
       const div = document.createElement("div");
       div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
       div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
@@ -137,7 +136,7 @@ function displayMessages() {
   };
 }
 
-// Delete single local message
+// Delete one message
 function deleteMessage(id) {
   const tx = localDB.transaction(["messages"], "readwrite");
   tx.objectStore("messages").delete(id);
@@ -158,10 +157,11 @@ function clearLocalMessages() {
 // Leave room
 function leaveRoom() {
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
-  msgRef.off(); // detach listener
+  msgRef.off();
   listenerAttached = false;
 
   document.getElementById("chatArea").style.display = "none";
+  document.getElementById("leaveBtn").style.display = "none";
   currentRoom = "";
   username = "";
   encryptionKey = "";
