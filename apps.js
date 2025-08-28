@@ -180,4 +180,19 @@ async function requestNotificationPermission() {
 async function initFCM() {
   try {
     const token = await messaging.getToken({
-      vapidKey: "BP2a0oz
+      vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0"
+    });
+    console.log("FCM Token:", token);
+  } catch (err) {
+    console.error("Error getting FCM token:", err);
+  }
+
+  messaging.onMessage(payload => {
+    const { title, body } = payload.notification || {};
+    if (title && body) new Notification(title, { body, icon: 'icon-192.png' });
+  });
+}
+
+// ----------------- Startup -----------------
+autoJoinRoom();
+requestNotificationPermission();
