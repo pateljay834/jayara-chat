@@ -76,27 +76,43 @@ function sendMessage() {
 
   const encrypted = encryptMessage(text);
   const msgRef = db.ref(`rooms/${currentRoom}/messages`).push();
-  msgRef.set({
+
+  // Message object
+  const msgObj = {
     senderDevice: username + "_" + Date.now(),
     ciphertext: encrypted,
     timestamp: Date.now(),
-    deliveredTo: { [username]: false }
-  });
+    deliveredTo: { [username]: false },
+    vanish: (mode === "vanish")
+  };
+
+  msgRef.set(msgObj);
+
+  if (mode === "storage") storeLocalMessage(text, username);
 
   msgBox.value = "";
-  storeLocalMessage(text, username);
 }
 
-// Listen for new messages
+// Listen for messages and handle Vanish Mode
 function listenMessages() {
   const msgRef = db.ref(`rooms/${currentRoom}/messages`);
   msgRef.on("child_added", snapshot => {
     const data = snapshot.val();
-    if (!data.deliveredTo[username]) {
-      const decrypted = decryptMessage(data.ciphertext);
-      storeLocalMessage(decrypted, data.senderDevice);
-      snapshot.ref.child("deliveredTo").child(username).set(true);
-    }
+    const decrypted = decryptMessage(data.ciphertext);
+
+    // Storage Mode: save locally
+    if (mode === "storage") storeLocalMessage(decrypted, data.senderDevice);
+
+    // Update delivered status
+    snapshot.ref.child("deliveredTo").child(username).set(true);
+
+    // Remove if Vanish Mode & delivered to all or older than 24h
+    snapshot.ref.child("deliveredTo").once("value").then(ds => {
+      const allDelivered = Object.values(ds.val()).every(v => v === true);
+      if ((mode === "vanish" && allDelivered) || (data.vanish && Date.now() - data.timestamp > 24*60*60*1000)) {
+        snapshot.ref.remove();
+      }
+    });
   });
   displayMessages();
 }
@@ -153,3 +169,15 @@ function leaveRoom() {
   username = "";
   encryptionKey = "";
 }
+
+// Periodic cleanup: remove Vanish Mode messages older than 24h
+setInterval(() => {
+  if (!currentRoom) return;
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`);
+  msgRef.once("value", snapshot => {
+    snapshot.forEach(child => {
+      const msg = child.val();
+      if (msg.vanish && Date.now() - msg.timestamp > 24*60*60*1000) child.ref.remove();
+    });
+  });
+}, 60*60*1000); // every 1 hour
