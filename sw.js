@@ -34,3 +34,26 @@ self.addEventListener("activate", event => {
     )
   );
 });
+
+// Firebase Push Notifications
+importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
+  authDomain: "jayara-web.firebaseapp.com",
+  projectId: "jayara-web",
+  messagingSenderId: "342182893596",
+  appId: "1:342182893596:web:664646e95a40e60d0da7d9"
+});
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(payload => {
+  const notificationTitle = payload.notification?.title || "Jayara Chat";
+  const notificationOptions = {
+    body: payload.notification?.body || "New message received",
+    icon: 'icon-192.png'
+  };
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
