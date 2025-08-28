@@ -10,7 +10,6 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-const messaging = firebase.messaging();
 
 // ----------------- Global Variables -----------------
 let currentUser = "";
@@ -77,106 +76,20 @@ async function joinRoom() {
   currentRoom = room;
   currentMode = mode;
 
-  let storedPass = localStorage.getItem(`jayara_pass_${room}`);
-  let passphrase = storedPass || prompt("Enter passphrase for room:");
+  // Ask for passphrase every time
+  let passphrase = prompt("Enter passphrase for this room:");
   if (!passphrase) return;
 
   roomKey = await generateRoomKey(passphrase, currentRoom);
 
+  // Store username/mode per device
   if (currentMode === "storage") {
-    localStorage.setItem(`jayara_user_${room}`, currentUser);
-    localStorage.setItem(`jayara_pass_${room}`, passphrase);
-    localStorage.setItem(`jayara_mode_${room}`, currentMode);
+    localStorage.setItem(`jayara_user_${currentRoom}`, currentUser);
+    localStorage.setItem(`jayara_mode_${currentRoom}`, currentMode);
   }
 
   setupChatListeners();
+
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
-  if (currentMode === "storage") document.getElementById("deleteBtn").style.display = "inline-block";
-}
-
-// ----------------- Auto-Join -----------------
-async function autoJoinRoom() {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith("jayara_user_"));
-  for (const key of keys) {
-    const room = key.replace("jayara_user_", "");
-    const user = localStorage.getItem(`jayara_user_${room}`);
-    const pass = localStorage.getItem(`jayara_pass_${room}`);
-    const mode = localStorage.getItem(`jayara_mode_${room}`);
-
-    if (user && pass && mode) {
-      currentUser = user;
-      currentRoom = room;
-      currentMode = mode;
-      roomKey = await generateRoomKey(pass, currentRoom);
-
-      setupChatListeners();
-      document.getElementById("chatArea").style.display = "block";
-      document.getElementById("leaveBtn").style.display = "inline-block";
-      if (currentMode === "storage") document.getElementById("deleteBtn").style.display = "inline-block";
-    }
-  }
-}
-
-// ----------------- Firebase Chat -----------------
-function setupChatListeners() {
-  messagesRef = db.ref(`rooms/${currentRoom}/messages`);
-  messagesRef.off();
-
-  messagesRef.on("child_added", async snapshot => {
-    const data = snapshot.val();
-    const text = await decryptMessage(data);
-    displayMessage(data.sender, text, data.sender === currentUser);
-  });
-}
-
-async function sendMessage() {
-  const msgBox = document.getElementById("msgBox");
-  const text = msgBox.value.trim();
-  if (!text) return;
-
-  const encrypted = await encryptMessage(text);
-  messagesRef.push({ sender: currentUser, ...encrypted, timestamp: Date.now() });
-  msgBox.value = "";
-}
-
-function displayMessage(sender, text, isMe) {
-  const messagesDiv = document.getElementById("messages");
-  const div = document.createElement("div");
-  div.className = `msg ${isMe ? "me" : "other"}`;
-  div.innerHTML = `<span class="username">${sender}</span>: ${text}`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// ----------------- Leave / Delete -----------------
-function leaveRoom() {
-  if (!currentRoom) return;
-  messagesRef = null;
-  roomKey = null;
-  currentRoom = null;
-  currentUser = null;
-  document.getElementById("chatArea").style.display = "none";
-
-  localStorage.removeItem(`jayara_user_${currentRoom}`);
-  localStorage.removeItem(`jayara_pass_${currentRoom}`);
-  localStorage.removeItem(`jayara_mode_${currentRoom}`);
-}
-
-function deleteAllMessages() {
-  if (!messagesRef) return;
-  messagesRef.remove();
-}
-
-// ----------------- Push Notifications -----------------
-async function requestNotificationPermission() {
-  if ('Notification' in window && 'serviceWorker' in navigator) {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') initFCM();
-  }
-}
-
-async function initFCM() {
-  try {
-    const token = await messaging.getToken({
-      vapidKey: "BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYu
+  if (currentMode === "storage") document.getElementById("deleteBtn").style
