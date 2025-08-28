@@ -72,24 +72,35 @@ async function joinRoom() {
 
   if (!username || !room) return alert("Enter your name and room code");
 
-  // Ask for room passphrase for encryption
-  const passphrase = prompt("Enter room passphrase for encryption:");
-  if (!passphrase) return alert("Passphrase required for encryption");
+  // Check if a passphrase is already stored
+  const saved = localStorage.getItem("jayaraUser");
+  let passphrase = "";
+  if (saved) {
+    const stored = JSON.parse(saved);
+    if (stored.username === username && stored.room === room) {
+      passphrase = stored.passphrase;
+    }
+  }
+
+  // Ask once if no passphrase stored
+  if (!passphrase) {
+    passphrase = prompt("Enter room passphrase for encryption:");
+    if (!passphrase) return alert("Passphrase required for encryption");
+    if (mode === "storage") {
+      localStorage.setItem(
+        "jayaraUser",
+        JSON.stringify({ username, room, mode, passphrase })
+      );
+    }
+  }
+
   roomKey = await generateKeyFromPassphrase(passphrase);
 
-  // Remove any previous listener
   if (messagesRef) messagesRef.off();
 
   currentUser = username;
   currentRoom = room;
   currentMode = mode;
-
-  if (mode === "storage") {
-    localStorage.setItem(
-      "jayaraUser",
-      JSON.stringify({ username, room, mode, passphrase })
-    );
-  }
 
   document.getElementById("chatArea").style.display = "block";
   document.getElementById("leaveBtn").style.display = "inline-block";
@@ -97,7 +108,6 @@ async function joinRoom() {
 
   messagesRef = db.ref("messages/" + room);
 
-  // Attach listener for incoming messages
   messagesRef.on("child_added", async snapshot => {
     const msg = snapshot.val();
     if (!msg) return;
@@ -195,19 +205,10 @@ async function autoJoinIfStored() {
   document.getElementById("room").value = room;
   document.getElementById("mode").value = mode;
 
-  // Use stored passphrase or ask if missing
-  let keyPassphrase = passphrase;
-  if (!keyPassphrase) {
-    keyPassphrase = prompt(`Enter passphrase to join room "${room}"`);
-    if (!keyPassphrase) return alert("Passphrase required to decrypt messages");
-    localStorage.setItem(
-      "jayaraUser",
-      JSON.stringify({ username, room, mode, passphrase: keyPassphrase })
-    );
-  }
+  // Generate encryption key from stored passphrase
+  roomKey = await generateKeyFromPassphrase(passphrase);
 
-  roomKey = await generateKeyFromPassphrase(keyPassphrase);
-
+  // Join the room automatically
   joinRoom();
 
   const messagesDiv = document.getElementById("messages");
