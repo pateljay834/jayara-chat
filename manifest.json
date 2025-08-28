@@ -1,12 +1,11 @@
 {
   "name": "Jayara Chat",
   "short_name": "Jayara",
-  "description": "Web-based chat app with vanish and storage modes",
   "start_url": "./index.html",
   "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2193b0",
   "orientation": "portrait",
-  "background_color": "#6b73ff",
-  "theme_color": "#317EFB",
   "icons": [
     {
       "src": "icon-192.png",
