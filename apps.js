@@ -80,11 +80,24 @@ function sendMessage() {
 // =============================
 function leaveRoom() {
   if (messagesRef) messagesRef.off();
+
+  const messagesDiv = document.getElementById("messages");
+  messagesDiv.innerHTML = "";
+
+  // Show session ended indicator
+  const info = document.createElement("div");
+  info.classList.add("msg");
+  info.style.background = "#ffe6e6";
+  info.style.textAlign = "center";
+  info.innerText = `🚪 Session Ended. You left the room.`;
+  messagesDiv.appendChild(info);
+
+  // Hide buttons & chat area
   document.getElementById("chatArea").style.display = "none";
-  document.getElementById("messages").innerHTML = "";
   document.getElementById("leaveBtn").style.display = "none";
   document.getElementById("deleteBtn").style.display = "none";
 
+  // Clear local storage
   localStorage.removeItem("jayaraUser");
 
   currentUser = "";
@@ -153,7 +166,25 @@ function autoJoinIfStored() {
     document.getElementById("username").value = username;
     document.getElementById("room").value = room;
     document.getElementById("mode").value = mode;
+
     joinRoom();
+
+    // Show indicator message
+    const messagesDiv = document.getElementById("messages");
+    const info = document.createElement("div");
+    info.classList.add("msg");
+    info.style.background = "#e6ffe6";
+    info.style.textAlign = "center";
+    info.innerText = `🔄 Rejoined ${room} as ${username} (Storage Mode)`;
+    messagesDiv.appendChild(info);
   }
 }
+
 document.addEventListener("DOMContentLoaded", autoJoinIfStored);
+
+// =============================
+// Optional: Enter key to send
+// =============================
+document.getElementById("msgBox").addEventListener("keypress", e => {
+  if (e.key === "Enter") sendMessage();
+});
