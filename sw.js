@@ -33,12 +33,12 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const url = event.request.url;
 
-  // 🔹 Allow Firebase requests to go to network directly
+  // Allow Firebase requests to go to network directly
   if (url.includes("firebaseio.com") || url.includes("fcm.googleapis.com")) {
     return; // do not intercept Firebase requests
   }
 
-  // For other requests: network first, fallback to cache
+  // Network first, fallback to cache for other requests
   event.respondWith(
     fetch(event.request)
       .then(response => response)
