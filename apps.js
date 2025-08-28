@@ -1,4 +1,4 @@
-// ----------------- Firebase Config -----------------
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -8,142 +8,148 @@ const firebaseConfig = {
   messagingSenderId: "342182893596",
   appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
+
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ----------------- Globals -----------------
-let currentUser = "";
+// App variables
 let currentRoom = "";
-let currentMode = "";
-let roomKey = null;
-let messagesRef = null;
+let username = "";
+let mode = "storage";
+let encryptionKey = "";
 
-// ----------------- Crypto -----------------
-const SALT_PREFIX = "jayara_salt_";
-async function generateRoomKey(passphrase, roomCode) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(passphrase),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: enc.encode(SALT_PREFIX + roomCode), iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
+// IndexedDB setup for local messages
+let localDB;
+const request = indexedDB.open("JayaraDB", 1);
+request.onupgradeneeded = e => {
+  localDB = e.target.result;
+  const store = localDB.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
+  store.createIndex("roomID", "room", { unique: false });
+};
+request.onsuccess = e => { localDB = e.target.result; };
+
+// Generate AES key from room + passphrase
+function deriveKey(room, passphrase) {
+  return CryptoJS.SHA256(room + passphrase).toString();
 }
 
-async function encryptMessage(text) {
-  const enc = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cipherBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    roomKey,
-    enc.encode(text)
-  );
-  return { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(cipherBuffer)) };
-}
+// Join a room
+function joinRoom() {
+  username = document.getElementById("username").value.trim();
+  currentRoom = document.getElementById("room").value.trim();
+  const passphrase = document.getElementById("passphrase").value.trim();
+  mode = document.getElementById("mode").value;
 
-async function decryptMessage(data) {
-  const dec = new TextDecoder();
-  try {
-    const plainBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(data.iv) },
-      roomKey,
-      new Uint8Array(data.ciphertext)
-    );
-    return dec.decode(plainBuffer);
-  } catch {
-    return "🔒 Unable to decrypt";
-  }
-}
+  if (!username || !currentRoom || !passphrase) { alert("Enter all fields!"); return; }
 
-// ----------------- Join Room -----------------
-async function joinRoom() {
-  const username = document.getElementById("username").value.trim();
-  const room = document.getElementById("room").value.trim();
-  const mode = document.getElementById("mode").value;
-
-  if (!username || !room) return alert("Enter name and room code.");
-  currentUser = username;
-  currentRoom = room;
-  currentMode = mode;
-
-  const passphrase = prompt("Enter room passphrase:");
-  if (!passphrase) return alert("Passphrase required.");
-  roomKey = await generateRoomKey(passphrase, currentRoom);
-
-  // Store username & mode only
-  if (currentMode === "storage") {
-    localStorage.setItem(`jayara_user_${currentRoom}`, currentUser);
-    localStorage.setItem(`jayara_mode_${currentRoom}`, currentMode);
-  }
-
-  setupChatListeners();
-
+  encryptionKey = deriveKey(currentRoom, passphrase);
   document.getElementById("chatArea").style.display = "block";
-  document.getElementById("leaveBtn").style.display = "inline-block";
-  document.getElementById("deleteBtn").style.display = currentMode === "storage" ? "inline-block" : "none";
+  listenMessages();
 }
 
-// ----------------- Firebase Chat -----------------
-function setupChatListeners() {
-  messagesRef = db.ref(`rooms/${currentRoom}/messages`);
-  messagesRef.off();
+// Create invite link
+function createInviteLink() {
+  const room = document.getElementById("room").value.trim();
+  const pass = document.getElementById("passphrase").value.trim();
+  if (!room || !pass) { alert("Enter room & passphrase!"); return; }
+  const link = `${location.origin}/index.html?room=${room}&pass=${pass}`;
+  document.getElementById("inviteLink").innerText = link;
+  navigator.clipboard.writeText(link);
+  alert("Invite link copied!");
+}
 
-  messagesRef.on("child_added", async snapshot => {
-    const data = snapshot.val();
-    const text = await decryptMessage(data);
-    displayMessage(data.sender, text, data.sender === currentUser);
+// Encrypt/Decrypt messages
+function encryptMessage(msg) {
+  return CryptoJS.AES.encrypt(msg, encryptionKey).toString();
+}
+function decryptMessage(cipher) {
+  try { return CryptoJS.AES.decrypt(cipher, encryptionKey).toString(CryptoJS.enc.Utf8); }
+  catch { return "[Cannot decrypt]"; }
+}
+
+// Send message
+function sendMessage() {
+  const msgBox = document.getElementById("msgBox");
+  let text = msgBox.value.trim();
+  if (!text) return;
+
+  const encrypted = encryptMessage(text);
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`).push();
+  msgRef.set({
+    senderDevice: username + "_" + Date.now(),
+    ciphertext: encrypted,
+    timestamp: Date.now(),
+    deliveredTo: { [username]: false }
   });
 
-  if (currentMode === "vanish") {
-    // Delete messages when leaving
-    window.addEventListener("beforeunload", () => {
-      messagesRef.remove();
-    });
-  }
-}
-
-async function sendMessage() {
-  const msgBox = document.getElementById("msgBox");
-  const text = msgBox.value.trim();
-  if (!text || !roomKey) return;
-  const encrypted = await encryptMessage(text);
-  messagesRef.push({ sender: currentUser, ...encrypted, timestamp: Date.now() });
   msgBox.value = "";
+  storeLocalMessage(text, username);
 }
 
-// ----------------- Display -----------------
-function displayMessage(sender, text, isMe) {
-  const messagesDiv = document.getElementById("messages");
-  const div = document.createElement("div");
-  div.className = `msg ${isMe ? "me" : "other"}`;
-  div.innerHTML = `<span class="username">${sender}</span>: ${text}`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// Listen for new messages
+function listenMessages() {
+  const msgRef = db.ref(`rooms/${currentRoom}/messages`);
+  msgRef.on("child_added", snapshot => {
+    const data = snapshot.val();
+    if (!data.deliveredTo[username]) {
+      const decrypted = decryptMessage(data.ciphertext);
+      storeLocalMessage(decrypted, data.senderDevice);
+      snapshot.ref.child("deliveredTo").child(username).set(true);
+    }
+  });
+  displayMessages();
 }
 
-// ----------------- Leave / Delete -----------------
+// Store message locally in IndexedDB
+function storeLocalMessage(text, senderID) {
+  const tx = localDB.transaction(["messages"], "readwrite");
+  const store = tx.objectStore("messages");
+  store.add({ room: currentRoom, sender: senderID, text, timestamp: Date.now() });
+  tx.oncomplete = displayMessages;
+}
+
+// Display messages in chat area
+function displayMessages() {
+  const container = document.getElementById("messages");
+  container.innerHTML = "";
+  const tx = localDB.transaction(["messages"], "readonly");
+  const store = tx.objectStore("messages");
+  const request = store.getAll();
+  request.onsuccess = e => {
+    e.target.result.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "msg " + (msg.sender.startsWith(username) ? "me" : "other");
+      div.innerHTML = `<span class="username">${msg.sender}</span>: ${msg.text} 
+        <button onclick="deleteMessage(${msg.id})">🗑️</button>`;
+      container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+  };
+}
+
+// Delete single local message
+function deleteMessage(id) {
+  const tx = localDB.transaction(["messages"], "readwrite");
+  tx.objectStore("messages").delete(id);
+  tx.oncomplete = displayMessages;
+}
+
+// Delete all local messages
+function clearLocalMessages() {
+  const tx = localDB.transaction(["messages"], "readwrite");
+  const store = tx.objectStore("messages");
+  const request = store.getAll();
+  request.onsuccess = e => {
+    e.target.result.forEach(msg => store.delete(msg.id));
+  };
+  tx.oncomplete = displayMessages;
+}
+
+// Leave room
 function leaveRoom() {
-  if (!currentRoom) return;
-  messagesRef = null;
-  roomKey = null;
-  currentRoom = null;
-  currentUser = null;
-  currentMode = null;
   document.getElementById("chatArea").style.display = "none";
-
-  localStorage.removeItem(`jayara_user_${currentRoom}`);
-  localStorage.removeItem(`jayara_mode_${currentRoom}`);
-}
-
-function deleteAllMessages() {
-  if (!messagesRef) return;
-  messagesRef.remove();
+  currentRoom = "";
+  username = "";
+  encryptionKey = "";
 }
