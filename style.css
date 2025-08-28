@@ -70,6 +70,9 @@ button:hover {
   padding: 8px 12px;
   border-radius: 8px;
   word-wrap: break-word;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .me {
@@ -79,6 +82,7 @@ button:hover {
 
 .other {
   background: #f1f1f1;
+  text-align: left;
 }
 
 .username {
@@ -93,4 +97,12 @@ button:hover {
 
 #deleteBtn:hover {
   background: #c0392b;
+}
+
+#leaveBtn {
+  background: #f39c12;
+}
+
+#leaveBtn:hover {
+  background: #d35400;
 }
