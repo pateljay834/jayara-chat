@@ -5,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jayara Chat</title>
   <link rel="stylesheet" href="style.css">
-  
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
-  <!-- CryptoJS for AES encryption -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2193b0">
 
   <script>
-    // Service Worker registration
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js")
         .then(() => console.log("✅ Service Worker registered"))
@@ -29,29 +23,25 @@
   <div id="chat">
     <h2>Jayara Chat</h2>
 
-    <!-- Join/Create Form -->
+    <!-- Join Form -->
     <input id="username" placeholder="Enter Your Name"><br>
-    <input id="room" placeholder="Enter Room Code"><br>
+    <input id="room" placeholder="Enter Room Name"><br>
     <input id="passphrase" placeholder="Enter Passphrase"><br>
     <select id="mode">
       <option value="vanish">Vanish Mode</option>
       <option value="storage">Storage Mode</option>
     </select><br>
     <button onclick="joinRoom()">Join Room</button>
-    <button onclick="createInviteLink()">Get Invite Link</button>
-    <p id="inviteLink"></p>
+    <button onclick="leaveRoom()" style="display:none;" id="leaveBtn">Leave Room</button>
+    <button onclick="clearLocalMessages()">Clear Local Messages</button>
 
     <!-- Chat Area -->
     <div id="chatArea" style="display:none;">
       <div id="messages"></div>
-
       <div id="msgRow">
         <input id="msgBox" placeholder="Type a message">
         <button onclick="sendMessage()">Send</button>
       </div>
-
-      <button id="leaveBtn" onclick="leaveRoom()">Leave Room</button>
-      <button id="deleteBtn" onclick="clearLocalMessages()">Delete All Local Messages</button>
     </div>
   </div>
 
