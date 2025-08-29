@@ -1,7 +1,10 @@
 {
+  "id": "/index.html",
   "name": "Jayara Chat",
   "short_name": "Jayara",
+  "description": "Secure, lightweight encrypted chat with Storage & Vanish modes.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2193b0",
