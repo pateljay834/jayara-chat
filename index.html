@@ -1,46 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jayara Chat</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jayara Chat (Rewritten)</title>
+
+  <!-- Styles -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- CryptoJS for AES -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2193b0">
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js")
-        .then(() => console.log("✅ Service Worker registered"))
-        .catch(err => console.error("SW registration failed:", err));
-    }
-  </script>
 </head>
 <body>
-  <div id="chat">
-    <h2>Jayara Chat</h2>
-    <input id="username" placeholder="Enter Your Name"><br>
-    <input id="room" placeholder="Enter Room Code"><br>
-    <input id="passphrase" placeholder="Enter Room Passphrase"><br>
-    <select id="mode">
-      <option value="vanish">Vanish Mode</option>
-      <option value="storage">Storage Mode</option>
-    </select><br>
-    <button onclick="joinRoom()">Join</button>
+  <main id="app">
+    <header>
+      <h1>Jayara Chat</h1>
+      <p class="subtitle">Encrypted rooms • Storage / Vanish mode • Multi-device</p>
+    </header>
 
-    <div id="chatArea" style="display:none;">
-      <div id="messages"></div>
-      <div id="msgRow">
-        <input id="msgBox" placeholder="Type a message">
-        <button onclick="sendMessage()">Send</button>
+    <section id="joinPanel" class="card">
+      <label><input id="username" placeholder="Display name" /></label>
+      <label><input id="room" placeholder="Room name" /></label>
+      <label><input id="passphrase" type="password" placeholder="Room passphrase" /></label>
+
+      <div class="row">
+        <label class="mode-label">Mode:
+          <select id="mode">
+            <option value="storage">Storage (persist)</option>
+            <option value="vanish">Vanish (ephemeral)</option>
+          </select>
+        </label>
+
+        <button id="joinBtn" onclick="joinRoom()">Join</button>
       </div>
-      <button id="leaveBtn" onclick="leaveRoom()" style="display:none;">Leave Room</button>
-      <button id="deleteBtn" onclick="clearLocalMessages()" style="display:none;">Delete All Messages</button>
-    </div>
-  </div>
 
+      <p class="hint">Tip: Storage persists messages locally. Vanish keeps messages transient and auto-deletes after 24h.</p>
+    </section>
+
+    <section id="chatPanel" class="card" style="display:none;">
+      <div class="toolbar">
+        <div>
+          <strong id="roomLabel"></strong>
+          <span id="modeBadge" class="badge"></span>
+        </div>
+        <div>
+          <button id="leaveBtn" onclick="leaveRoom()">Leave</button>
+          <button id="clearBtn" onclick="clearLocalMessages()" style="display:none;">Clear Local (Storage)</button>
+        </div>
+      </div>
+
+      <div id="messages" aria-live="polite"></div>
+
+      <div id="composer">
+        <input id="msgBox" placeholder="Type a message..." />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+    </section>
+
+    <footer class="credit">
+      <small>Jayara — Secure PWA chat • Do not share passphrase publicly</small>
+    </footer>
+  </main>
+
+  <!-- Main app JS -->
   <script src="apps.js"></script>
 </body>
 </html>
