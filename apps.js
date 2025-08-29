@@ -15,7 +15,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // -------------------------
-// Global State
+// Globals
 // -------------------------
 let currentRoom = null;
 let currentMode = null;
@@ -23,15 +23,15 @@ let username = null;
 let passphrase = null;
 let listenerRef = null;
 
-// Debug helper (logs also on screen)
+// Debug log
 function logDebug(msg) {
   console.log(msg);
   const dbg = document.getElementById("debugLog");
-  if (dbg) dbg.innerText += msg + "\n";
+  dbg.innerText += msg + "\n";
 }
 
 // -------------------------
-// Encryption Helpers (AES)
+// Encryption
 // -------------------------
 function encryptMessage(text, key) {
   return CryptoJS.AES.encrypt(text, key).toString();
@@ -40,13 +40,13 @@ function decryptMessage(cipher, key) {
   try {
     const bytes = CryptoJS.AES.decrypt(cipher, key);
     return bytes.toString(CryptoJS.enc.Utf8);
-  } catch (e) {
+  } catch {
     return "[decrypt failed]";
   }
 }
 
 // -------------------------
-// IndexedDB (local storage mode)
+// IndexedDB
 // -------------------------
 let dbLocal;
 const DB_NAME = "JayaraChat";
@@ -96,7 +96,7 @@ function clearLocalMessages() {
 }
 
 // -------------------------
-// UI Helpers
+// UI
 // -------------------------
 function renderMessage(msg, isMine) {
   const div = document.createElement("div");
@@ -122,7 +122,7 @@ async function joinRoom() {
 
   await openLocalDB();
 
-  // Clear old listener if any
+  // Remove old listener
   if (listenerRef) {
     listenerRef.off();
     listenerRef = null;
@@ -142,22 +142,16 @@ async function joinRoom() {
     const text = decryptMessage(data.text, passphrase);
     const msg = { user: data.user, text, room: currentRoom, time: data.time };
 
-    // Render
     renderMessage(msg, msg.user === username);
 
-    // Save only in storage mode
     if (currentMode === "storage") saveLocalMessage(msg);
 
-    // In vanish mode, delete after 24h
-    if (currentMode === "vanish") {
-      const now = Date.now();
-      if (now - data.time > 24 * 60 * 60 * 1000) {
-        snap.ref.remove();
-      }
+    // Vanish cleanup
+    if (currentMode === "vanish" && Date.now() - data.time > 24 * 60 * 60 * 1000) {
+      snap.ref.remove();
     }
   });
 
-  // Load local messages if storage mode
   if (currentMode === "storage") {
     getLocalMessages(currentRoom, (msg) => renderMessage(msg, msg.user === username));
   }
