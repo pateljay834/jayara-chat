@@ -1,137 +1,67 @@
-/* -------------------- Body & Chat Container -------------------- */
-body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #6dd5ed, #2193b0);
-  text-align: center;
-  margin: 0;
-  padding: 0;
+:root{
+  --accent:#2193b0;
+  --accent-dark:#1b6f93;
+  --bg-start:#6dd5ed;
+  --bg-end:#2193b0;
 }
 
-#chat {
-  max-width: 480px;
-  margin: 30px auto;
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(135deg,var(--bg-start),var(--bg-end));color:#0b2340}
+#app{max-width:720px;margin:24px auto;padding:16px}
+
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(2,36,63,0.12);}
+
+header h1{margin:0;font-size:1.6rem}
+.subtitle{margin:6px 0 12px;color:#083047b0}
+
+label{display:block;margin-bottom:8px}
+input[type="text"], input[type="password"], select, input{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #d6dbe0;border-radius:8px;
+  font-size:14px;
 }
 
-/* -------------------- Messages -------------------- */
-#messages {
-  height: 320px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  margin-bottom: 12px;
-  padding: 10px;
-  text-align: left;
-  border-radius: 8px;
-  background: #fafafa;
+.row{display:flex;gap:12px;align-items:center}
+.row .mode-label{flex:1}
+#joinBtn{padding:10px 16px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer}
+#joinBtn:hover{background:var(--accent-dark)}
+
+.hint{font-size:13px;color:#335464;margin-top:8px}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.toolbar .badge{display:inline-block;padding:6px 8px;border-radius:999px;background:#eef6f9;color:#045; font-weight:600;margin-left:8px}
+
+#messages{
+  height:44vh;
+  min-height:300px;
+  max-height:60vh;
+  overflow:auto;
+  border:1px solid #eee;
+  padding:12px;border-radius:8px;background:#fcfeff;margin-bottom:8px;
 }
 
-/* -------------------- Inputs -------------------- */
-input, select {
-  padding: 10px;
-  margin: 6px;
-  width: 90%;
-  max-width: 400px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  box-sizing: border-box;
-}
+.msg{padding:8px 12px;border-radius:10px;margin-bottom:8px;position:relative;word-break:break-word;max-width:85%;}
+.msg .meta{font-size:12px;color:#345;margin-bottom:6px}
+.msg.me{background:#d8eefc;margin-left:auto;text-align:right}
+.msg.other{background:#f4f6f8;text-align:left}
 
-#msgRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
+.vanish-marker{display:inline-block;padding:2px 6px;font-size:11px;border-radius:6px;background:#fff8e6;color:#b36b00;margin-left:8px}
 
-#msgBox {
-  flex: 1;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+.msg button.del{
+  position:absolute;top:6px;right:6px;background:transparent;border:none;color:#c0392b;font-size:14px;cursor:pointer;
 }
+.msg button.del:hover{color:#8a2318}
 
-/* -------------------- Buttons -------------------- */
-button {
-  padding: 10px 14px;
-  margin: 6px 0;
-  background: #317EFB;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  white-space: nowrap;
-}
+/* composer */
+#composer{display:flex;gap:8px;align-items:center}
+#msgBox{flex:1;padding:10px;border-radius:8px;border:1px solid #d6dbe0}
+#sendBtn{padding:10px 14px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer}
+#sendBtn:hover{background:var(--accent-dark)}
 
-button:hover {
-  background: #255ec7;
-}
-
-#deleteBtn {
-  background: #e74c3c;
-}
-
-#deleteBtn:hover {
-  background: #c0392b;
-}
-
-/* -------------------- Message Styling -------------------- */
-.msg {
-  margin: 6px 0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  word-wrap: break-word;
-  position: relative;
-}
-
-.me {
-  background: #d1e7ff;
-  text-align: right;
-}
-
-.other {
-  background: #f1f1f1;
-  text-align: left;
-}
-
-.username {
-  font-weight: bold;
-  font-size: 0.85em;
-  margin-right: 5px;
-}
-
-/* -------------------- Delete Button on Messages -------------------- */
-.msg button {
-  background: transparent;
-  color: #e74c3c;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  position: absolute;
-  top: 2px;
-  right: 4px;
-}
-
-.msg button:hover {
-  color: #c0392b;
-}
-
-/* -------------------- Responsive -------------------- */
-@media screen and (max-width: 500px) {
-  #chat {
-    width: 95%;
-    margin: 20px auto;
-    padding: 15px;
-  }
-  input, select, button {
-    width: 100%;
-    margin: 4px 0;
-  }
-  #msgRow {
-    flex-direction: column;
-    gap: 4px;
-  }
+/* small screens */
+@media (max-width:520px){
+  #app{padding:12px}
+  .row{flex-direction:column}
+  .toolbar{flex-direction:column;align-items:flex-start;gap:8px}
 }
