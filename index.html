@@ -23,7 +23,6 @@
 </head>
 <body>
   <div id="chat">
-
     <h2>Jayara Chat</h2>
 
     <!-- Join Form -->
@@ -36,7 +35,6 @@
         <option value="storage">Storage Mode</option>
       </select><br>
       <button onclick="joinRoom()">Join</button>
-      <button id="cleanupBtn" onclick="runCleanup()">🧹 Run Cleanup</button>
     </div>
 
     <!-- Chat Area -->
@@ -49,13 +47,15 @@
         <button onclick="sendMessage()">Send</button>
       </div>
 
-      <button onclick="leaveRoom()">Leave Room</button>
-      <button onclick="clearLocalMessages()">Clear Local</button>
+      <div class="controls">
+        <button onclick="leaveRoom()">Leave Room</button>
+        <button onclick="clearLocalMessages()">Clear Local</button>
+        <button onclick="cleanupOldMessages()" id="cleanupBtn">🧹 Cleanup Room</button>
+      </div>
     </div>
 
     <!-- Debug log -->
     <pre id="debugLog"></pre>
-
   </div>
 
   <script src="apps.js"></script>
