@@ -1,4 +1,8 @@
-// Firebase config
+// -------------------------
+// apps.js (full, with manual + automatic cleanup)
+// -------------------------
+
+// Firebase config (your existing values)
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -9,25 +13,137 @@ const firebaseConfig = {
   appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
 
-// init firebase (compat)
+// Init Firebase (compat)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// globals
+// Globals
 let currentRoom = null;
 let currentMode = null;
 let currentUser = null;
 let currentPass = null;
 let msgRef = null;
 
-// helpers
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+// -------------------------
+// Debug helper
+// -------------------------
 function logDebug(msg) {
+  console.log(msg);
   const dbg = document.getElementById("debugLog");
-  dbg.innerText += msg + "\n";
-  dbg.scrollTop = dbg.scrollHeight;
+  if (dbg) {
+    dbg.innerText += msg + "\n";
+    dbg.scrollTop = dbg.scrollHeight;
+  }
 }
 
-// join room
+// -------------------------
+// Cleanup helpers
+// -------------------------
+// Clean messages under a single room/mode (e.g. rooms/<roomKey>/<modeKey>)
+// removes messages older than threshold and removes the mode node if empty
+function cleanupMode(roomKey, modeKey) {
+  const now = Date.now();
+  const threshold = modeKey === "vanish" ? ONE_DAY_MS : SEVEN_DAYS_MS;
+  const modeRef = db.ref(`rooms/${roomKey}/${modeKey}`);
+
+  return modeRef.once("value").then((snap) => {
+    const deletions = [];
+    snap.forEach((msgSnap) => {
+      const msg = msgSnap.val();
+      const age = now - (msg && msg.time ? msg.time : now);
+      if (age > threshold) {
+        deletions.push(msgSnap.ref.remove());
+      }
+    });
+
+    // Wait for deletions to complete, then check if mode node empty and remove it if empty
+    return Promise.all(deletions)
+      .then(() => modeRef.once("value"))
+      .then((afterSnap) => {
+        if (!afterSnap.exists()) {
+          return modeRef.remove().catch(() => {});
+        }
+        return Promise.resolve();
+      });
+  }).catch((err) => {
+    logDebug(`cleanupMode error for ${roomKey}/${modeKey}: ${err}`);
+    return Promise.resolve();
+  });
+}
+
+// Run cleanup across all rooms: remove old messages, remove empty modes, remove empty rooms older than 7d
+function runCleanup() {
+  logDebug("🧹 Cleanup started...");
+  const roomsRef = db.ref("rooms");
+  const now = Date.now();
+
+  return roomsRef.once("value").then((snap) => {
+    const roomPromises = [];
+
+    snap.forEach((roomSnap) => {
+      const roomKey = roomSnap.key;
+
+      // For each non-meta child (modes), schedule cleanupMode
+      const modePromises = [];
+      roomSnap.forEach((modeSnap) => {
+        if (modeSnap.key === "meta") return; // skip meta
+        modePromises.push(cleanupMode(roomKey, modeSnap.key));
+      });
+
+      // After cleaning modes, check if room is empty (excluding meta)
+      const roomPromise = Promise.all(modePromises)
+        .then(() => db.ref(`rooms/${roomKey}`).once("value"))
+        .then((updatedRoomSnap) => {
+          // Check if there are any non-meta children left
+          let hasNonMeta = false;
+          updatedRoomSnap.forEach((child) => {
+            if (child.key !== "meta") hasNonMeta = true;
+          });
+
+          if (!hasNonMeta) {
+            // If room has meta.lastActive older than 7 days, remove the room
+            const meta = updatedRoomSnap.child("meta").val();
+            if (meta && meta.lastActive && (now - meta.lastActive > SEVEN_DAYS_MS)) {
+              return updatedRoomSnap.ref.remove().then(() => {
+                logDebug(`🗑 Removed room ${roomKey} (empty & inactive >7d)`);
+              }).catch((e) => {
+                logDebug(`Failed to remove room ${roomKey}: ${e}`);
+              });
+            } else {
+              // If no meta or not old enough, optionally remove mode nodes already done; do nothing else.
+              return Promise.resolve();
+            }
+          }
+          return Promise.resolve();
+        });
+
+      roomPromises.push(roomPromise);
+    });
+
+    return Promise.all(roomPromises);
+  }).then(() => {
+    logDebug("✅ Cleanup finished.");
+    // Show small user alert only if manual trigger used (we'll call runCleanup from both manual and automatic).
+    // Here we do not alert automatically; caller may decide to alert.
+    return Promise.resolve();
+  }).catch((err) => {
+    logDebug("Cleanup failed: " + err);
+  });
+}
+
+// Exposed wrapper called by button; shows alert when completed
+function runCleanupButton() {
+  runCleanup().then(() => {
+    alert("Cleanup completed");
+  });
+}
+
+// -------------------------
+// Core chat functions
+// -------------------------
 function joinRoom() {
   currentUser = document.getElementById("username").value.trim();
   currentRoom = document.getElementById("room").value.trim();
@@ -39,113 +155,113 @@ function joinRoom() {
     return;
   }
 
+  // set msgRef
   msgRef = db.ref("rooms/" + currentRoom + "/" + currentMode);
 
+  // update room meta lastActive
+  db.ref(`rooms/${currentRoom}/meta`).update({ lastActive: Date.now() }).catch(() => {});
+
+  // perform cleanup in background (non-blocking). This will prune old data.
+  runCleanup();
+
+  // UI switch
   document.getElementById("joinPanel").style.display = "none";
   document.getElementById("chatPanel").style.display = "block";
   document.getElementById("roomLabel").innerText = currentRoom;
   document.getElementById("modeBadge").innerText = currentMode;
   document.getElementById("messages").innerHTML = "";
 
+  // start listening for messages in this room/mode
   msgRef.off();
-  msgRef.on("child_added", snap => {
-    try {
-      const enc = snap.val();
-      if (!enc || !enc.text) return;
+  msgRef.on("child_added", (snap) => {
+    const enc = snap.val();
+    if (!enc || !enc.text) return;
 
+    // In vanish mode, client also ensures expired messages are removed (best-effort):
+    if (currentMode === "vanish" && enc.time && (Date.now() - enc.time > ONE_DAY_MS)) {
+      // stale, remove it
+      snap.ref.remove().catch(() => {});
+      return;
+    }
+
+    try {
       const bytes = CryptoJS.AES.decrypt(enc.text, currentPass);
       const plain = bytes.toString(CryptoJS.enc.Utf8);
-
       if (!plain) {
-        logDebug("⚠️ decryption failed for message");
+        logDebug("⚠️ Decryption failed (wrong passphrase or corrupt message).");
         return;
       }
-
       addMessage(enc.user, plain, enc.user === currentUser);
     } catch (e) {
-      logDebug("❌ error decrypting: " + e.message);
+      logDebug("❌ Error decrypting: " + (e && e.message ? e.message : e));
     }
   });
 
-  logDebug("✅ joined room " + currentRoom + " in " + currentMode + " mode");
+  logDebug(`✅ Joined room: ${currentRoom} (${currentMode})`);
 }
 
-// send
 function sendMessage() {
-  if (!msgRef) return;
-
-  const msgBox = document.getElementById("msgBox");
-  const text = msgBox.value.trim();
+  if (!msgRef) {
+    logDebug("⚠️ Not in a room.");
+    return;
+  }
+  const box = document.getElementById("msgBox");
+  const text = box.value.trim();
   if (!text) return;
 
-  const ciphertext = CryptoJS.AES.encrypt(text, currentPass).toString();
+  const cipher = CryptoJS.AES.encrypt(text, currentPass).toString();
 
   msgRef.push({
     user: currentUser,
-    text: ciphertext,
+    text: cipher,
     time: Date.now()
+  }).then(() => {
+    // update room lastActive
+    db.ref(`rooms/${currentRoom}/meta`).update({ lastActive: Date.now() }).catch(() => {});
+    // run cleanup in background (best-effort)
+    runCleanup();
+  }).catch((err) => {
+    logDebug("❌ Send failed: " + (err && err.message ? err.message : err));
   });
 
-  msgBox.value = "";
+  box.value = "";
 }
 
-// add msg to UI
 function addMessage(user, text, isMe) {
   const div = document.createElement("div");
   div.className = "msg " + (isMe ? "me" : "other");
-  div.innerHTML = `<span class="username">${user}:</span> ${text}`;
+  div.innerHTML = `<span class="username">${escapeHtml(user)}:</span> ${escapeHtml(text)}`;
   const box = document.getElementById("messages");
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
 
-// leave room
 function leaveRoom() {
   if (msgRef) msgRef.off();
-  currentRoom = null;
   msgRef = null;
+  currentRoom = null;
   document.getElementById("chatPanel").style.display = "none";
   document.getElementById("joinPanel").style.display = "block";
+  logDebug("🚪 Left room");
 }
 
-// clear local
 function clearLocalMessages() {
   document.getElementById("messages").innerHTML = "";
+  logDebug("🧹 Local view cleared.");
 }
 
-// ✅ CLEANUP FUNCTION
-function runCleanup() {
-  const now = Date.now();
-  const sevenDays = 7 * 24 * 60 * 60 * 1000;
-
-  const roomsRef = db.ref("rooms");
-  roomsRef.once("value", snapshot => {
-    snapshot.forEach(roomSnap => {
-      const roomKey = roomSnap.key;
-
-      roomSnap.forEach(modeSnap => {
-        const modeKey = modeSnap.key;
-        const msgs = modeSnap.val();
-
-        let hasRecent = false;
-
-        for (let msgId in msgs) {
-          const msg = msgs[msgId];
-          if (msg && msg.time && (now - msg.time > sevenDays)) {
-            db.ref(`rooms/${roomKey}/${modeKey}/${msgId}`).remove();
-          } else {
-            hasRecent = true;
-          }
-        }
-
-        // if no recent messages, remove the whole mode
-        if (!hasRecent) {
-          db.ref(`rooms/${roomKey}/${modeKey}`).remove();
-        }
-      });
-    });
-
-    alert("✅ Cleanup completed");
-    logDebug("🧹 Cleanup run finished");
-  });
+// small helper to avoid XSS in UI text
+function escapeHtml(s) {
+  if (s === undefined || s === null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
+
+// expose functions for inline onclicks
+window.joinRoom = joinRoom;
+window.leaveRoom = leaveRoom;
+window.sendMessage = sendMessage;
+window.clearLocalMessages = clearLocalMessages;
+window.runCleanup = runCleanupButton;
