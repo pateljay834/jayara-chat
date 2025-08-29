@@ -21,26 +21,21 @@
 <body>
   <div id="chat">
     <h2>Jayara Chat</h2>
-
-    <!-- Join Form -->
     <input id="username" placeholder="Enter Your Name"><br>
-    <input id="room" placeholder="Enter Room Name"><br>
-    <input id="passphrase" type="password" placeholder="Enter Room Passphrase"><br>
+    <input id="room" placeholder="Enter Room Code"><br>
+    <input id="passphrase" placeholder="Enter Room Passphrase"><br>
     <select id="mode">
       <option value="vanish">Vanish Mode</option>
       <option value="storage">Storage Mode</option>
     </select><br>
-    <button onclick="joinRoom()">Join Room</button>
+    <button onclick="joinRoom()">Join</button>
 
-    <!-- Chat Area -->
     <div id="chatArea" style="display:none;">
       <div id="messages"></div>
-
       <div id="msgRow">
         <input id="msgBox" placeholder="Type a message">
         <button onclick="sendMessage()">Send</button>
       </div>
-
       <button id="leaveBtn" onclick="leaveRoom()" style="display:none;">Leave Room</button>
       <button id="deleteBtn" onclick="clearLocalMessages()" style="display:none;">Delete All Messages</button>
     </div>
