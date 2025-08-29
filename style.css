@@ -7,29 +7,52 @@ body {
 }
 
 #chat {
-  max-width: 520px;
-  margin: 28px auto;
-  background: #fff;
+  max-width: 480px;
+  margin: 30px auto;
+  background: white;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
 h2 {
-  margin: 0 0 14px;
+  margin-bottom: 16px;
   color: #2193b0;
 }
 
-#joinPanel input, #joinPanel select {
+#messages {
+  height: 320px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin-bottom: 12px;
   padding: 10px;
-  margin: 6px 0;
-  width: 92%;
-  max-width: 440px;
-  border: 1px solid #cfd8dc;
+  text-align: left;
   border-radius: 8px;
+  background: #fafafa;
 }
 
-.modeRow { display:block; margin: 6px 0 10px; color:#333; }
+input, select {
+  padding: 10px;
+  margin: 6px 0;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#msgRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+#msgBox {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
 
 button {
   padding: 10px 14px;
@@ -37,61 +60,23 @@ button {
   background: #317EFB;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   white-space: nowrap;
   transition: background 0.2s;
 }
 
-button:hover { background: #255ec7; }
-
-.topBar {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:10px;
-}
-
-.badge {
-  margin-left: 8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eef6f9;
-  color: #045;
-  font-size: 12px;
-}
-
-#messages {
-  height: 360px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 10px;
-  padding: 10px;
-  text-align: left;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-#msgRow {
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-
-#msgBox {
-  flex:1;
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #cfd8dc;
+button:hover {
+  background: #255ec7;
 }
 
 .msg {
   margin: 6px 0;
   padding: 8px 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   word-wrap: break-word;
-  max-width: 78%;
+  max-width: 75%;
   clear: both;
 }
 
@@ -112,25 +97,32 @@ button:hover { background: #255ec7; }
   margin-right: 5px;
 }
 
-/* button variants */
-#deleteBtn { background: #e74c3c; }
-#deleteBtn:hover { background: #c0392b; }
-#clearBtn { background: #7f8c8d; }
-#clearBtn:hover { background: #5f6a6a; }
-#leaveBtn { background: #e67e22; }
-#leaveBtn:hover { background: #cf711f; }
+/* Leave/Delete buttons */
+#deleteBtn {
+  background: #e74c3c;
+}
+#deleteBtn:hover {
+  background: #c0392b;
+}
+
+/* Special cleanup button */
+#cleanupBtn {
+  background: #e67e22;
+}
+#cleanupBtn:hover {
+  background: #ca640f;
+}
 
 /* Debug log */
 #debugLog {
-  font-size: 12px;
-  color: #b71c1c;
-  background: #fff8f8;
-  border: 1px dashed #e6b1b1;
+  background: #f8f8f8;
+  border: 1px dashed #bbb;
   border-radius: 6px;
   padding: 8px;
-  max-height: 140px;
+  max-height: 120px;
   overflow-y: auto;
   margin-top: 10px;
   text-align: left;
-  white-space: pre-wrap;
+  font-size: 0.85em;
+  color: #333;
 }
