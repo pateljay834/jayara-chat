@@ -1,8 +1,6 @@
-// -------------------------
-// apps.js (full, with manual + automatic cleanup)
-// -------------------------
-
-// Firebase config (your existing values)
+// ==============================
+// Firebase Configuration
+// ==============================
 const firebaseConfig = {
   apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
   authDomain: "jayara-web.firebaseapp.com",
@@ -13,137 +11,31 @@ const firebaseConfig = {
   appId: "1:342182893596:web:664646e95a40e60d0da7d9"
 };
 
-// Init Firebase (compat)
+// Init Firebase (Compat SDK)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// ==============================
 // Globals
+// ==============================
 let currentRoom = null;
 let currentMode = null;
 let currentUser = null;
 let currentPass = null;
-let msgRef = null;
+let msgRef = null; // active database reference
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-// -------------------------
-// Debug helper
-// -------------------------
+// ==============================
+// Debug Logger
+// ==============================
 function logDebug(msg) {
-  console.log(msg);
   const dbg = document.getElementById("debugLog");
-  if (dbg) {
-    dbg.innerText += msg + "\n";
-    dbg.scrollTop = dbg.scrollHeight;
-  }
+  dbg.innerText += msg + "\n";
+  dbg.scrollTop = dbg.scrollHeight;
 }
 
-// -------------------------
-// Cleanup helpers
-// -------------------------
-// Clean messages under a single room/mode (e.g. rooms/<roomKey>/<modeKey>)
-// removes messages older than threshold and removes the mode node if empty
-function cleanupMode(roomKey, modeKey) {
-  const now = Date.now();
-  const threshold = modeKey === "vanish" ? ONE_DAY_MS : SEVEN_DAYS_MS;
-  const modeRef = db.ref(`rooms/${roomKey}/${modeKey}`);
-
-  return modeRef.once("value").then((snap) => {
-    const deletions = [];
-    snap.forEach((msgSnap) => {
-      const msg = msgSnap.val();
-      const age = now - (msg && msg.time ? msg.time : now);
-      if (age > threshold) {
-        deletions.push(msgSnap.ref.remove());
-      }
-    });
-
-    // Wait for deletions to complete, then check if mode node empty and remove it if empty
-    return Promise.all(deletions)
-      .then(() => modeRef.once("value"))
-      .then((afterSnap) => {
-        if (!afterSnap.exists()) {
-          return modeRef.remove().catch(() => {});
-        }
-        return Promise.resolve();
-      });
-  }).catch((err) => {
-    logDebug(`cleanupMode error for ${roomKey}/${modeKey}: ${err}`);
-    return Promise.resolve();
-  });
-}
-
-// Run cleanup across all rooms: remove old messages, remove empty modes, remove empty rooms older than 7d
-function runCleanup() {
-  logDebug("🧹 Cleanup started...");
-  const roomsRef = db.ref("rooms");
-  const now = Date.now();
-
-  return roomsRef.once("value").then((snap) => {
-    const roomPromises = [];
-
-    snap.forEach((roomSnap) => {
-      const roomKey = roomSnap.key;
-
-      // For each non-meta child (modes), schedule cleanupMode
-      const modePromises = [];
-      roomSnap.forEach((modeSnap) => {
-        if (modeSnap.key === "meta") return; // skip meta
-        modePromises.push(cleanupMode(roomKey, modeSnap.key));
-      });
-
-      // After cleaning modes, check if room is empty (excluding meta)
-      const roomPromise = Promise.all(modePromises)
-        .then(() => db.ref(`rooms/${roomKey}`).once("value"))
-        .then((updatedRoomSnap) => {
-          // Check if there are any non-meta children left
-          let hasNonMeta = false;
-          updatedRoomSnap.forEach((child) => {
-            if (child.key !== "meta") hasNonMeta = true;
-          });
-
-          if (!hasNonMeta) {
-            // If room has meta.lastActive older than 7 days, remove the room
-            const meta = updatedRoomSnap.child("meta").val();
-            if (meta && meta.lastActive && (now - meta.lastActive > SEVEN_DAYS_MS)) {
-              return updatedRoomSnap.ref.remove().then(() => {
-                logDebug(`🗑 Removed room ${roomKey} (empty & inactive >7d)`);
-              }).catch((e) => {
-                logDebug(`Failed to remove room ${roomKey}: ${e}`);
-              });
-            } else {
-              // If no meta or not old enough, optionally remove mode nodes already done; do nothing else.
-              return Promise.resolve();
-            }
-          }
-          return Promise.resolve();
-        });
-
-      roomPromises.push(roomPromise);
-    });
-
-    return Promise.all(roomPromises);
-  }).then(() => {
-    logDebug("✅ Cleanup finished.");
-    // Show small user alert only if manual trigger used (we'll call runCleanup from both manual and automatic).
-    // Here we do not alert automatically; caller may decide to alert.
-    return Promise.resolve();
-  }).catch((err) => {
-    logDebug("Cleanup failed: " + err);
-  });
-}
-
-// Exposed wrapper called by button; shows alert when completed
-function runCleanupButton() {
-  runCleanup().then(() => {
-    alert("Cleanup completed");
-  });
-}
-
-// -------------------------
-// Core chat functions
-// -------------------------
+// ==============================
+// Join Room
+// ==============================
 function joinRoom() {
   currentUser = document.getElementById("username").value.trim();
   currentRoom = document.getElementById("room").value.trim();
@@ -151,117 +43,146 @@ function joinRoom() {
   currentMode = document.getElementById("mode").value;
 
   if (!currentUser || !currentRoom || !currentPass) {
-    alert("Enter all details (name, room, passphrase)");
+    alert("⚠️ Please enter name, room and passphrase");
     return;
   }
 
-  // set msgRef
+  // Firebase path: rooms/{room}/{mode}
   msgRef = db.ref("rooms/" + currentRoom + "/" + currentMode);
 
-  // update room meta lastActive
-  db.ref(`rooms/${currentRoom}/meta`).update({ lastActive: Date.now() }).catch(() => {});
-
-  // perform cleanup in background (non-blocking). This will prune old data.
-  runCleanup();
-
-  // UI switch
+  // Switch UI
   document.getElementById("joinPanel").style.display = "none";
   document.getElementById("chatPanel").style.display = "block";
   document.getElementById("roomLabel").innerText = currentRoom;
   document.getElementById("modeBadge").innerText = currentMode;
+
+  // Clear old messages
   document.getElementById("messages").innerHTML = "";
 
-  // start listening for messages in this room/mode
+  // Stop previous listeners
   msgRef.off();
-  msgRef.on("child_added", (snap) => {
-    const enc = snap.val();
-    if (!enc || !enc.text) return;
 
-    // In vanish mode, client also ensures expired messages are removed (best-effort):
-    if (currentMode === "vanish" && enc.time && (Date.now() - enc.time > ONE_DAY_MS)) {
-      // stale, remove it
-      snap.ref.remove().catch(() => {});
-      return;
-    }
-
+  // Start listening
+  msgRef.on("child_added", snap => {
     try {
+      const enc = snap.val();
+      if (!enc || !enc.text) return;
+
+      // decrypt
       const bytes = CryptoJS.AES.decrypt(enc.text, currentPass);
       const plain = bytes.toString(CryptoJS.enc.Utf8);
+
       if (!plain) {
-        logDebug("⚠️ Decryption failed (wrong passphrase or corrupt message).");
+        logDebug("⚠️ Failed to decrypt a message");
         return;
       }
+
       addMessage(enc.user, plain, enc.user === currentUser);
+
+      // vanish mode → delete from firebase after showing
+      if (currentMode === "vanish") {
+        snap.ref.remove();
+      }
     } catch (e) {
-      logDebug("❌ Error decrypting: " + (e && e.message ? e.message : e));
+      logDebug("❌ Error decrypting: " + e.message);
     }
   });
 
-  logDebug(`✅ Joined room: ${currentRoom} (${currentMode})`);
+  logDebug("✅ Joined room '" + currentRoom + "' in " + currentMode + " mode");
 }
-
+// ==============================
+// Send Message
+// ==============================
 function sendMessage() {
-  if (!msgRef) {
-    logDebug("⚠️ Not in a room.");
-    return;
-  }
-  const box = document.getElementById("msgBox");
-  const text = box.value.trim();
+  if (!msgRef) return;
+
+  const msgBox = document.getElementById("msgBox");
+  const text = msgBox.value.trim();
   if (!text) return;
 
-  const cipher = CryptoJS.AES.encrypt(text, currentPass).toString();
+  try {
+    const ciphertext = CryptoJS.AES.encrypt(text, currentPass).toString();
 
-  msgRef.push({
-    user: currentUser,
-    text: cipher,
-    time: Date.now()
-  }).then(() => {
-    // update room lastActive
-    db.ref(`rooms/${currentRoom}/meta`).update({ lastActive: Date.now() }).catch(() => {});
-    // run cleanup in background (best-effort)
-    runCleanup();
-  }).catch((err) => {
-    logDebug("❌ Send failed: " + (err && err.message ? err.message : err));
-  });
+    msgRef.push({
+      user: currentUser,
+      text: ciphertext,
+      time: Date.now()
+    });
 
-  box.value = "";
+    msgBox.value = "";
+  } catch (e) {
+    logDebug("❌ Error encrypting: " + e.message);
+  }
 }
 
+// ==============================
+// Add Message to UI
+// ==============================
 function addMessage(user, text, isMe) {
   const div = document.createElement("div");
   div.className = "msg " + (isMe ? "me" : "other");
-  div.innerHTML = `<span class="username">${escapeHtml(user)}:</span> ${escapeHtml(text)}`;
+  div.innerHTML = `<span class="username">${user}:</span> ${text}`;
   const box = document.getElementById("messages");
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
 
+// ==============================
+// Leave Room
+// ==============================
 function leaveRoom() {
   if (msgRef) msgRef.off();
-  msgRef = null;
   currentRoom = null;
+  msgRef = null;
+
   document.getElementById("chatPanel").style.display = "none";
   document.getElementById("joinPanel").style.display = "block";
-  logDebug("🚪 Left room");
+
+  logDebug("👋 Left room");
 }
 
+// ==============================
+// Clear Local Messages (UI only)
+// ==============================
 function clearLocalMessages() {
   document.getElementById("messages").innerHTML = "";
-  logDebug("🧹 Local view cleared.");
+  logDebug("🧹 Local messages cleared");
 }
 
-// small helper to avoid XSS in UI text
-function escapeHtml(s) {
-  if (s === undefined || s === null) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
+// ==============================
+// Manual Cleanup Button
+// ==============================
+// Deletes messages older than 7 days OR entire empty room older than 7 days
+function cleanupOldMessages() {
+  if (!currentRoom) {
+    alert("⚠️ Join a room first");
+    return;
+  }
 
-// expose functions for inline onclicks
-window.joinRoom = joinRoom;
-window.leaveRoom = leaveRoom;
-window.sendMessage = sendMessage;
-window.clearLocalMessages = clearLocalMessages;
-window.runCleanup = runCleanupButton;
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days
+  const roomPath = db.ref("rooms/" + currentRoom + "/storage");
+
+  roomPath.once("value", snap => {
+    if (!snap.exists()) {
+      logDebug("No data in room to cleanup");
+      return;
+    }
+
+    let hasMessages = false;
+    snap.forEach(child => {
+      const val = child.val();
+      if (val.time && val.time < cutoff) {
+        child.ref.remove(); // remove old message
+      } else {
+        hasMessages = true;
+      }
+    });
+
+    if (!hasMessages) {
+      roomPath.remove(); // delete empty room
+      logDebug("🗑️ Deleted empty room " + currentRoom);
+    } else {
+      logDebug("🧹 Old messages cleaned in " + currentRoom);
+    }
+  });
+}
