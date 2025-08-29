@@ -36,12 +36,7 @@
         <option value="storage">Storage Mode</option>
       </select><br>
       <button onclick="joinRoom()">Join</button>
-
-      <!-- Cleanup note -->
-      <p style="font-size:12px;color:#555;margin-top:8px;">
-        ⚠️ Messages older than <b>7 days</b> are auto-deleted.<br>
-        Empty groups inactive for 7 days will be removed.
-      </p>
+      <button id="cleanupBtn" onclick="runCleanup()">🧹 Run Cleanup</button>
     </div>
 
     <!-- Chat Area -->
@@ -59,7 +54,7 @@
     </div>
 
     <!-- Debug log -->
-    <pre id="debugLog" style="background:#eee; padding:10px; height:120px; overflow-y:auto; text-align:left;"></pre>
+    <pre id="debugLog"></pre>
 
   </div>
 
