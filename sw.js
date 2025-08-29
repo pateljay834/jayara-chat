@@ -14,12 +14,10 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("fetch", event => {
-  event.respondWith(caches.match(event.request).then(res => res || fetch(event.request)));
+  event.respondWith(caches.match(event.request).then(resp => resp || fetch(event.request)));
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(key => { if(key !== CACHE_NAME) return caches.delete(key); })))
-  );
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))));
   self.clients.claim();
 });
