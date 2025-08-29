@@ -1,24 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jayara Chat</title>
-
-  <!-- Styles -->
   <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#2193b0" />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2193b0">
 
-  <!-- Firebase (compat) -->
+  <!-- Firebase + CryptoJS -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
-  <!-- CryptoJS (AES) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
   <script>
-    // Register service worker
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js")
         .then(() => console.log("✅ Service Worker registered"))
@@ -28,51 +23,46 @@
 </head>
 <body>
   <div id="chat">
+
     <h2>Jayara Chat</h2>
 
-    <!-- JOIN PANEL -->
+    <!-- Join Form -->
     <div id="joinPanel">
       <input id="username" placeholder="Enter Your Name"><br>
       <input id="room" placeholder="Enter Room Code"><br>
-      <input id="passphrase" type="password" placeholder="Enter Passphrase"><br>
+      <input id="passphrase" placeholder="Enter Passphrase"><br>
+      <select id="mode">
+        <option value="vanish">Vanish Mode</option>
+        <option value="storage">Storage Mode</option>
+      </select><br>
+      <button onclick="joinRoom()">Join</button>
 
-      <label class="modeRow">
-        Mode:
-        <select id="mode">
-          <option value="storage">Storage Mode (keeps history)</option>
-          <option value="vanish">Vanish Mode (24h auto-delete)</option>
-        </select>
-      </label>
-      <button id="joinBtn" onclick="joinRoom()">Join</button>
+      <!-- Cleanup note -->
+      <p style="font-size:12px;color:#555;margin-top:8px;">
+        ⚠️ Messages older than <b>7 days</b> are auto-deleted.<br>
+        Empty groups inactive for 7 days will be removed.
+      </p>
     </div>
 
-    <!-- CHAT PANEL -->
+    <!-- Chat Area -->
     <div id="chatPanel" style="display:none;">
-      <div class="topBar">
-        <div class="roomInfo">
-          <strong>Room:</strong> <span id="roomLabel"></span>
-          <span id="modeBadge" class="badge"></span>
-        </div>
-        <div class="actions">
-          <button id="leaveBtn" onclick="leaveRoom()">Leave</button>
-          <button id="clearBtn" onclick="clearLocalMessages()">Clear Local</button>
-          <button id="deleteBtn" onclick="deleteAllMessages()">Delete All</button>
-        </div>
-      </div>
-
+      <h3>Room: <span id="roomLabel"></span> (<span id="modeBadge"></span>)</h3>
       <div id="messages"></div>
 
       <div id="msgRow">
-        <input id="msgBox" placeholder="Type a message" />
-        <button id="sendBtn" onclick="sendMessage()">Send</button>
+        <input id="msgBox" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
       </div>
+
+      <button onclick="leaveRoom()">Leave Room</button>
+      <button onclick="clearLocalMessages()">Clear Local</button>
     </div>
 
-    <!-- Debug log (visible on mobile too) -->
-    <pre id="debugLog"></pre>
+    <!-- Debug log -->
+    <pre id="debugLog" style="background:#eee; padding:10px; height:120px; overflow-y:auto; text-align:left;"></pre>
+
   </div>
 
-  <!-- Main app -->
   <script src="apps.js"></script>
 </body>
 </html>
