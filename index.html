@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jayara Chat</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2193b0">
 
-  <!-- Firebase + CryptoJS -->
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2193b0" />
+
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- CryptoJS (AES) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
   <script>
+    // Register service worker
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js")
         .then(() => console.log("✅ Service Worker registered"))
@@ -23,40 +28,51 @@
 </head>
 <body>
   <div id="chat">
-
     <h2>Jayara Chat</h2>
 
-    <!-- Join Form -->
+    <!-- JOIN PANEL -->
     <div id="joinPanel">
       <input id="username" placeholder="Enter Your Name"><br>
       <input id="room" placeholder="Enter Room Code"><br>
-      <input id="passphrase" placeholder="Enter Passphrase"><br>
-      <select id="mode">
-        <option value="vanish">Vanish Mode</option>
-        <option value="storage">Storage Mode</option>
-      </select><br>
-      <button onclick="joinRoom()">Join</button>
+      <input id="passphrase" type="password" placeholder="Enter Passphrase"><br>
+
+      <label class="modeRow">
+        Mode:
+        <select id="mode">
+          <option value="storage">Storage Mode (keeps history)</option>
+          <option value="vanish">Vanish Mode (24h auto-delete)</option>
+        </select>
+      </label>
+      <button id="joinBtn" onclick="joinRoom()">Join</button>
     </div>
 
-    <!-- Chat Area -->
+    <!-- CHAT PANEL -->
     <div id="chatPanel" style="display:none;">
-      <h3>Room: <span id="roomLabel"></span> (<span id="modeBadge"></span>)</h3>
+      <div class="topBar">
+        <div class="roomInfo">
+          <strong>Room:</strong> <span id="roomLabel"></span>
+          <span id="modeBadge" class="badge"></span>
+        </div>
+        <div class="actions">
+          <button id="leaveBtn" onclick="leaveRoom()">Leave</button>
+          <button id="clearBtn" onclick="clearLocalMessages()">Clear Local</button>
+          <button id="deleteBtn" onclick="deleteAllMessages()">Delete All</button>
+        </div>
+      </div>
+
       <div id="messages"></div>
 
       <div id="msgRow">
-        <input id="msgBox" placeholder="Type a message">
-        <button onclick="sendMessage()">Send</button>
+        <input id="msgBox" placeholder="Type a message" />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
       </div>
-
-      <button onclick="leaveRoom()">Leave Room</button>
-      <button onclick="clearLocalMessages()">Clear Local</button>
     </div>
 
-    <!-- Debug log -->
-    <pre id="debugLog" style="background:#eee; padding:10px; height:120px; overflow-y:auto; text-align:left;"></pre>
-
+    <!-- Debug log (visible on mobile too) -->
+    <pre id="debugLog"></pre>
   </div>
 
+  <!-- Main app -->
   <script src="apps.js"></script>
 </body>
 </html>
