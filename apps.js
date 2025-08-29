@@ -27,40 +27,7 @@ function logDebug(msg) {
   dbg.scrollTop = dbg.scrollHeight;
 }
 
-// ---------- CLEANUP OLD ROOMS & MESSAGES ----------
-function cleanupRooms() {
-  const roomsRef = db.ref("rooms");
-  const now = Date.now();
-  const sevenDays = 7 * 24 * 60 * 60 * 1000;
-
-  roomsRef.once("value", snap => {
-    snap.forEach(roomSnap => {
-      const roomKey = roomSnap.key;
-      let hasMessages = false;
-
-      roomSnap.forEach(modeSnap => {
-        modeSnap.forEach(msgSnap => {
-          hasMessages = true;
-          const msg = msgSnap.val();
-          if (msg.time && now - msg.time > sevenDays) {
-            msgSnap.ref.remove(); // delete old messages
-          }
-        });
-      });
-
-      if (!hasMessages) {
-        // delete empty room if inactive for 7+ days
-        const roomMeta = roomSnap.child("meta").val();
-        if (roomMeta && roomMeta.lastActive && now - roomMeta.lastActive > sevenDays) {
-          roomsRef.child(roomKey).remove();
-          logDebug(`🧹 Removed empty room: ${roomKey}`);
-        }
-      }
-    });
-  });
-}
-
-// ---------- JOIN ROOM ----------
+// join room
 function joinRoom() {
   currentUser = document.getElementById("username").value.trim();
   currentRoom = document.getElementById("room").value.trim();
@@ -72,49 +39,38 @@ function joinRoom() {
     return;
   }
 
-  // room reference
   msgRef = db.ref("rooms/" + currentRoom + "/" + currentMode);
 
-  // update meta
-  db.ref("rooms/" + currentRoom + "/meta").set({
-    lastActive: Date.now()
-  });
-
-  // cleanup on join
-  cleanupRooms();
-
-  // UI switch
   document.getElementById("joinPanel").style.display = "none";
   document.getElementById("chatPanel").style.display = "block";
   document.getElementById("roomLabel").innerText = currentRoom;
   document.getElementById("modeBadge").innerText = currentMode;
   document.getElementById("messages").innerHTML = "";
 
-  // start listening
   msgRef.off();
   msgRef.on("child_added", snap => {
     try {
       const enc = snap.val();
-      if (!enc.text) return;
+      if (!enc || !enc.text) return;
 
       const bytes = CryptoJS.AES.decrypt(enc.text, currentPass);
       const plain = bytes.toString(CryptoJS.enc.Utf8);
 
       if (!plain) {
-        logDebug("⚠️ Decryption failed");
+        logDebug("⚠️ decryption failed for message");
         return;
       }
 
       addMessage(enc.user, plain, enc.user === currentUser);
     } catch (e) {
-      logDebug("error decrypting: " + e.message);
+      logDebug("❌ error decrypting: " + e.message);
     }
   });
 
-  logDebug("✅ Joined room " + currentRoom + " (" + currentMode + ")");
+  logDebug("✅ joined room " + currentRoom + " in " + currentMode + " mode");
 }
 
-// ---------- SEND MESSAGE ----------
+// send
 function sendMessage() {
   if (!msgRef) return;
 
@@ -130,18 +86,10 @@ function sendMessage() {
     time: Date.now()
   });
 
-  // update meta
-  db.ref("rooms/" + currentRoom + "/meta").set({
-    lastActive: Date.now()
-  });
-
-  // cleanup on send
-  cleanupRooms();
-
   msgBox.value = "";
 }
 
-// ---------- ADD MESSAGE TO UI ----------
+// add msg to UI
 function addMessage(user, text, isMe) {
   const div = document.createElement("div");
   div.className = "msg " + (isMe ? "me" : "other");
@@ -151,7 +99,7 @@ function addMessage(user, text, isMe) {
   box.scrollTop = box.scrollHeight;
 }
 
-// ---------- LEAVE ROOM ----------
+// leave room
 function leaveRoom() {
   if (msgRef) msgRef.off();
   currentRoom = null;
@@ -160,7 +108,44 @@ function leaveRoom() {
   document.getElementById("joinPanel").style.display = "block";
 }
 
-// ---------- CLEAR LOCAL ----------
+// clear local
 function clearLocalMessages() {
   document.getElementById("messages").innerHTML = "";
+}
+
+// ✅ CLEANUP FUNCTION
+function runCleanup() {
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+  const roomsRef = db.ref("rooms");
+  roomsRef.once("value", snapshot => {
+    snapshot.forEach(roomSnap => {
+      const roomKey = roomSnap.key;
+
+      roomSnap.forEach(modeSnap => {
+        const modeKey = modeSnap.key;
+        const msgs = modeSnap.val();
+
+        let hasRecent = false;
+
+        for (let msgId in msgs) {
+          const msg = msgs[msgId];
+          if (msg && msg.time && (now - msg.time > sevenDays)) {
+            db.ref(`rooms/${roomKey}/${modeKey}/${msgId}`).remove();
+          } else {
+            hasRecent = true;
+          }
+        }
+
+        // if no recent messages, remove the whole mode
+        if (!hasRecent) {
+          db.ref(`rooms/${roomKey}/${modeKey}`).remove();
+        }
+      });
+    });
+
+    alert("✅ Cleanup completed");
+    logDebug("🧹 Cleanup run finished");
+  });
 }
