@@ -1,61 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jayara Chat</title>
+
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2193b0">
 
-  <!-- Firebase + CryptoJS -->
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- CryptoJS AES -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
   <script>
+    // register service worker
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js")
-        .then(() => console.log("✅ Service Worker registered"))
-        .catch(err => console.error("SW registration failed:", err));
+      navigator.serviceWorker.register("sw.js").catch(() => {/* ignore for now */});
     }
   </script>
 </head>
 <body>
   <div id="chat">
-    <h2>Jayara Chat</h2>
+    <h1>Jayara Chat</h1>
 
-    <!-- Join Form -->
-    <div id="joinPanel">
-      <input id="username" placeholder="Enter Your Name"><br>
-      <input id="room" placeholder="Enter Room Code"><br>
-      <input id="passphrase" placeholder="Enter Passphrase"><br>
-      <select id="mode">
-        <option value="vanish">Vanish Mode</option>
-        <option value="storage">Storage Mode</option>
-      </select><br>
-      <button onclick="joinRoom()">Join</button>
+    <!-- JOIN PANEL -->
+    <div id="joinPanel" class="card">
+      <input id="username" placeholder="Display name" />
+      <input id="room" placeholder="Room code" />
+      <input id="passphrase" placeholder="Passphrase" />
+      <label class="modeRow">
+        Mode:
+        <select id="mode">
+          <option value="storage">Storage (7 days)</option>
+          <option value="vanish">Vanish (24h)</option>
+        </select>
+      </label>
+
+      <div class="row">
+        <button id="joinBtn" onclick="joinRoom()">Join</button>
+        <button id="cleanupAllBtn" onclick="runCleanupButton()">🧹 Clean Old Rooms</button>
+      </div>
+
+      <p class="note">⚠️ Storage mode keeps messages for 7 days. Vanish mode messages auto-delete after 24 hours.</p>
     </div>
 
-    <!-- Chat Area -->
-    <div id="chatPanel" style="display:none;">
-      <h3>Room: <span id="roomLabel"></span> (<span id="modeBadge"></span>)</h3>
-      <div id="messages"></div>
+    <!-- CHAT PANEL -->
+    <div id="chatPanel" class="card" style="display:none;">
+      <div class="top">
+        <div>
+          <strong id="roomLabel"></strong>
+          <span id="modeBadge" class="badge"></span>
+        </div>
+        <div class="top-actions">
+          <button onclick="leaveRoom()">Leave</button>
+          <button onclick="clearLocalMessages()">Clear Local</button>
+          <button id="cleanupBtn" onclick="cleanupOldMessages()">🧹 Cleanup Room</button>
+        </div>
+      </div>
 
-      <div id="msgRow">
-        <input id="msgBox" placeholder="Type a message">
+      <div id="messages" class="messages"></div>
+
+      <div id="composer" class="composer">
+        <input id="msgBox" placeholder="Type a message" />
         <button onclick="sendMessage()">Send</button>
       </div>
-
-      <div class="controls">
-        <button onclick="leaveRoom()">Leave Room</button>
-        <button onclick="clearLocalMessages()">Clear Local</button>
-        <button onclick="cleanupOldMessages()" id="cleanupBtn">🧹 Cleanup Room</button>
-      </div>
     </div>
 
-    <!-- Debug log -->
-    <pre id="debugLog"></pre>
+    <!-- Debug (collapsible) -->
+    <details style="margin-top:12px">
+      <summary>Debug log</summary>
+      <pre id="debugLog" class="debug"></pre>
+    </details>
   </div>
 
   <script src="apps.js"></script>
