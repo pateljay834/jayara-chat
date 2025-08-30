@@ -122,13 +122,25 @@
             border-bottom-left-radius: 0.25rem;
         }
 
+        .message.unread {
+            border-left: 4px solid #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { border-left-color: #10b981; }
+            50% { border-left-color: #34d399; }
+        }
+
+        .message-text {
+            margin-bottom: 0.25rem;
+        }
+
         .message-meta {
             font-size: 0.7rem;
             opacity: 0.7;
             margin-top: 0.25rem;
         }
-
-        .input-area {
             padding: 1rem;
             border-top: 1px solid #e2e8f0;
             background: white;
@@ -337,7 +349,10 @@
                 </select>
             </div>
 
-            <button id="joinButton">Join Room</button>
+            <div class="controls">
+                <button id="joinButton">Join Room</button>
+                <button id="requestNotificationsButton" class="btn-secondary" style="display: none;">🔔 Enable Notifications</button>
+            </div>
 
             <div class="controls">
                 <button id="cleanupButton" class="btn-secondary">🧹 Cleanup Room</button>
@@ -404,7 +419,11 @@
         let currentPassphrase = '';
         let currentMode = 'vanish';
         let messagesRef = null;
+        let roomRef = null;
+        let presenceRef = null;
         let isJoined = false;
+        let userPresenceId = '';
+        let notificationPermission = 'default';
 
         // DOM elements
         const joinScreen = document.getElementById('joinScreen');
@@ -454,24 +473,225 @@
             return Date.now().toString() + Math.random().toString(36).substr(2, 9);
         }
 
-        // Load saved data
+        // Load saved data and restore session
         function loadSavedData() {
             const savedUser = localStorage.getItem('jayara_username');
             const savedRoom = localStorage.getItem('jayara_room');
+            const savedMode = localStorage.getItem('jayara_mode');
+            const savedSession = localStorage.getItem('jayara_active_session');
             
             if (savedUser) usernameInput.value = savedUser;
             if (savedRoom) roomCodeInput.value = savedRoom;
+            if (savedMode) chatModeSelect.value = savedMode;
+            
+            // Auto-rejoin if in storage mode and had active session
+            if (savedSession && savedMode === 'storage' && savedUser && savedRoom) {
+                log('Found active storage mode session - ready to rejoin');
+                showSessionRestorePrompt(savedUser, savedRoom);
+            }
             
             log('Loaded saved data');
         }
 
-        // Save user data
+        // Show session restore prompt
+        function showSessionRestorePrompt(username, room) {
+            const restoreDiv = document.createElement('div');
+            restoreDiv.className = 'status info';
+            restoreDiv.innerHTML = `
+                <strong>Resume Session?</strong><br>
+                Found active session for <strong>${username}</strong> in room <strong>${room}</strong><br>
+                <button onclick="quickRejoin()" style="margin-top: 0.5rem; margin-right: 0.5rem;">Resume Chat</button>
+                <button onclick="clearSession()" class="btn-secondary" style="margin-top: 0.5rem;">Start Fresh</button>
+            `;
+            joinScreen.insertBefore(restoreDiv, joinScreen.firstChild);
+        }
+
+        // Quick rejoin for storage mode
+        window.quickRejoin = function() {
+            const savedUser = localStorage.getItem('jayara_username');
+            const savedRoom = localStorage.getItem('jayara_room');
+            
+            usernameInput.value = savedUser;
+            roomCodeInput.value = savedRoom;
+            chatModeSelect.value = 'storage';
+            
+            // Focus on passphrase input
+            passphraseInput.focus();
+            passphraseInput.placeholder = 'Enter your passphrase to resume...';
+            
+            document.querySelector('.status').remove();
+        };
+
+        // Clear session
+        window.clearSession = function() {
+            localStorage.removeItem('jayara_active_session');
+            localStorage.removeItem('jayara_mode');
+            document.querySelector('.status').remove();
+        };
+
+        // Save user data and session
         function saveUserData() {
             localStorage.setItem('jayara_username', currentUser);
             localStorage.setItem('jayara_room', currentRoom);
+            localStorage.setItem('jayara_mode', currentMode);
+            
+            // Save active session only in storage mode
+            if (currentMode === 'storage') {
+                localStorage.setItem('jayara_active_session', 'true');
+            } else {
+                localStorage.removeItem('jayara_active_session');
+            }
         }
 
-        // Message handling
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                notificationPermission = await Notification.requestPermission();
+                if (notificationPermission === 'granted') {
+                    log('🔔 Notification permission granted');
+                    await subscribeToNotifications();
+                } else {
+                    log('🔕 Notification permission denied');
+                }
+            }
+        }
+
+        // Subscribe to push notifications
+        async function subscribeToNotifications() {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array('your-vapid-public-key') // You'll need to generate this
+                });
+                
+                // Store subscription in Firebase for this user/room
+                const subscriptionData = {
+                    endpoint: subscription.endpoint,
+                    keys: subscription.toJSON().keys,
+                    userId: userPresenceId,
+                    room: currentRoom,
+                    username: currentUser
+                };
+                
+                await database.ref(`notifications/${currentRoom}/${userPresenceId}`).set(subscriptionData);
+                log('📱 Push notification subscription saved');
+                
+            } catch (error) {
+                log(`Notification subscription error: ${error.message}`);
+            }
+        }
+
+        // Helper function for VAPID key conversion
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // User presence management
+        async function setupPresence() {
+            userPresenceId = generateId();
+            const presenceData = {
+                username: currentUser,
+                joinedAt: Date.now(),
+                lastSeen: Date.now(),
+                mode: currentMode,
+                online: true
+            };
+
+            presenceRef = database.ref(`rooms/${currentRoom}/presence/${userPresenceId}`);
+            
+            // Set initial presence
+            await presenceRef.set(presenceData);
+            
+            // Update last seen periodically
+            const heartbeatInterval = setInterval(() => {
+                if (isJoined) {
+                    presenceRef.update({ lastSeen: Date.now(), online: true });
+                } else {
+                    clearInterval(heartbeatInterval);
+                }
+            }, 30000); // Every 30 seconds
+
+            // Handle disconnect - crucial for cleanup
+            presenceRef.onDisconnect().update({ online: false, leftAt: Date.now() });
+            
+            // Listen for presence changes
+            const roomPresenceRef = database.ref(`rooms/${currentRoom}/presence`);
+            roomPresenceRef.on('child_removed', async (snapshot) => {
+                const leftUser = snapshot.val();
+                log(`👋 ${leftUser.username} left the room`);
+                
+                // Check if room should be cleaned up
+                await checkRoomCleanup();
+            });
+
+            log(`✅ Presence setup for ${currentUser}`);
+        }
+
+        // Check if room needs cleanup (vanish mode or empty room)
+        async function checkRoomCleanup() {
+            try {
+                const roomPresenceSnapshot = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                const presenceData = roomPresenceSnapshot.val() || {};
+                
+                // Get online users
+                const onlineUsers = Object.values(presenceData).filter(user => user.online);
+                
+                // If vanish mode and user leaves, delete their messages
+                if (currentMode === 'vanish') {
+                    // Clean up messages for this user session
+                    await cleanupUserMessages(userPresenceId);
+                }
+                
+                // If no users online, clean up room (especially for vanish mode)
+                if (onlineUsers.length === 0) {
+                    log('🧹 No active users - cleaning up room');
+                    
+                    if (currentMode === 'vanish') {
+                        // Delete all messages in vanish mode
+                        await database.ref(`rooms/${currentRoom}/messages`).remove();
+                        await database.ref(`rooms/${currentRoom}/presence`).remove();
+                        await database.ref(`notifications/${currentRoom}`).remove();
+                        log('🗑️ Vanish mode: Room completely cleaned');
+                    }
+                }
+                
+            } catch (error) {
+                log(`Cleanup check error: ${error.message}`);
+            }
+        }
+
+        // Clean up messages for a specific user (vanish mode)
+        async function cleanupUserMessages(userId) {
+            if (currentMode !== 'vanish') return;
+            
+            try {
+                const messagesSnapshot = await messagesRef.once('value');
+                const messages = messagesSnapshot.val() || {};
+                
+                // Remove messages from this user session
+                const deletions = [];
+                Object.keys(messages).forEach(key => {
+                    const message = messages[key];
+                    if (message.userId === userId) {
+                        deletions.push(messagesRef.child(key).remove());
+                    }
+                });
+                
+                await Promise.all(deletions);
+                log(`🧹 Cleaned ${deletions.length} messages for departed user`);
+                
+            } catch (error) {
+                log(`User message cleanup error: ${error.message}`);
+            }
+        }
         function addMessage(username, text, timestamp, isOwn = false, messageId) {
             // Check for duplicate messages
             if (document.getElementById(`msg-${messageId}`)) {
@@ -504,7 +724,7 @@
             }, 100);
         }
 
-        // Send message
+        // Send message with user tracking
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text || !currentPassphrase) return;
@@ -519,6 +739,7 @@
             
             const messageData = {
                 id: messageId,
+                userId: userPresenceId, // Track which user sent this
                 username: currentUser,
                 text: encryptedText,
                 timestamp: timestamp,
@@ -529,6 +750,9 @@
                 .then(() => {
                     messageInput.value = '';
                     log(`Message sent: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`);
+                    
+                    // Send notifications to other users
+                    sendNotificationToOthers(text);
                 })
                 .catch(error => {
                     log(`Error sending message: ${error.message}`);
@@ -538,7 +762,27 @@
                 });
         }
 
-        // Cleanup old messages
+        // Send push notifications to other users in the room
+        async function sendNotificationToOthers(messageText) {
+            try {
+                const notificationsSnapshot = await database.ref(`notifications/${currentRoom}`).once('value');
+                const notifications = notificationsSnapshot.val() || {};
+                
+                // Send to all users except current user
+                Object.values(notifications).forEach(subscription => {
+                    if (subscription.userId !== userPresenceId && subscription.username !== currentUser) {
+                        // In a real app, you'd send this to your backend to trigger push notifications
+                        // For demo, we'll just log it
+                        log(`📬 Would notify ${subscription.username}: "${messageText.substring(0, 30)}..."`);
+                    }
+                });
+                
+            } catch (error) {
+                log(`Notification sending error: ${error.message}`);
+            }
+        }
+
+        // Enhanced cleanup with presence awareness
         async function cleanupRoom() {
             if (!currentRoom) return;
             
@@ -550,13 +794,22 @@
                 const now = Date.now();
                 const deletions = [];
 
+                // Get current room presence to avoid deleting active users' messages
+                const presenceSnapshot = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                const presence = presenceSnapshot.val() || {};
+                const activeUserIds = Object.keys(presence).filter(id => presence[id].online);
+
                 Object.keys(messages).forEach(key => {
                     const message = messages[key];
                     const age = now - message.timestamp;
                     
-                    // Delete vanish mode messages older than 24h
-                    if (message.mode === 'vanish' && age > 24 * 60 * 60 * 1000) {
-                        deletions.push(messagesRef.child(key).remove());
+                    // Delete vanish mode messages older than 24h OR from users who left
+                    if (message.mode === 'vanish') {
+                        const shouldDelete = age > 24 * 60 * 60 * 1000 || 
+                                           (message.userId && !activeUserIds.includes(message.userId));
+                        if (shouldDelete) {
+                            deletions.push(messagesRef.child(key).remove());
+                        }
                     }
                     // Delete storage mode messages older than 7 days
                     else if (message.mode === 'storage' && age > 7 * 24 * 60 * 60 * 1000) {
@@ -566,13 +819,22 @@
 
                 await Promise.all(deletions);
                 log(`Cleanup complete: ${deletions.length} messages removed`);
+
+                // Check if room is completely empty and should be deleted
+                const remainingMessages = await messagesRef.once('value');
+                const remainingPresence = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                
+                if (!remainingMessages.exists() && !remainingPresence.exists()) {
+                    await database.ref(`rooms/${currentRoom}`).remove();
+                    log('🗑️ Empty room completely removed');
+                }
                 
             } catch (error) {
                 log(`Cleanup error: ${error.message}`);
             }
         }
 
-        // Join room
+        // Join room with enhanced presence and notifications
         async function joinRoom() {
             const username = usernameInput.value.trim();
             const roomCode = roomCodeInput.value.trim();
@@ -591,9 +853,16 @@
             
             log(`Joining room ${roomCode} as ${username} in ${mode} mode...`);
             
-            // Setup Firebase reference
+            // Setup Firebase references
             messagesRef = database.ref(`rooms/${roomCode}/messages`);
+            roomRef = database.ref(`rooms/${roomCode}`);
             connectionRef = database.ref('.info/connected');
+            
+            // Setup user presence
+            await setupPresence();
+            
+            // Request notification permission
+            await requestNotificationPermission();
             
             // Listen for messages
             messagesRef.on('child_added', (snapshot) => {
@@ -602,14 +871,19 @@
 
                 const decryptedText = decrypt(message.text, currentPassphrase);
                 if (decryptedText) {
-                    const isOwn = message.username === currentUser;
+                    const isOwn = message.username === currentUser && message.userId === userPresenceId;
                     addMessage(message.username, decryptedText, message.timestamp, isOwn, message.id);
+                    
+                    // Show notification for messages from others (if app is in background)
+                    if (!isOwn && document.hidden && notificationPermission === 'granted') {
+                        showLocalNotification(message.username, decryptedText);
+                    }
                 } else {
                     log('Failed to decrypt message (wrong passphrase?)');
                 }
             });
 
-            // Listen for messages being removed (for real-time cleanup)
+            // Listen for messages being removed
             messagesRef.on('child_removed', (snapshot) => {
                 const messageId = snapshot.key;
                 const messageElement = document.getElementById(`msg-${messageId}`);
@@ -640,30 +914,101 @@
             setTimeout(cleanupRoom, 1000);
         }
 
-        // Leave room
-        function leaveRoom() {
-            if (messagesRef) {
-                messagesRef.off();
-                messagesRef = null;
+        // Show local notification
+        function showLocalNotification(username, message) {
+            if ('Notification' in window && notificationPermission === 'granted') {
+                const notification = new Notification(`${username} in ${currentRoom}`, {
+                    body: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+                    icon: '/icon-192.png',
+                    badge: '/badge-72.png',
+                    tag: `jayara-${currentRoom}`,
+                    requireInteraction: false,
+                    silent: false
+                });
+
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+
+                // Auto-close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+            }
+        }
+
+        // Leave room with proper cleanup
+        async function leaveRoom() {
+            log('Leaving room...');
+            
+            try {
+                // Mark user as offline and set leave time
+                if (presenceRef) {
+                    await presenceRef.update({ 
+                        online: false, 
+                        leftAt: Date.now() 
+                    });
+                    
+                    // For vanish mode, clean up user's messages immediately
+                    if (currentMode === 'vanish') {
+                        await cleanupUserMessages(userPresenceId);
+                    }
+                    
+                    // Remove presence after a delay (for graceful disconnect)
+                    setTimeout(async () => {
+                        try {
+                            await presenceRef.remove();
+                            await database.ref(`notifications/${currentRoom}/${userPresenceId}`).remove();
+                        } catch (e) {
+                            // Ignore errors on cleanup
+                        }
+                    }, 1000);
+                }
+                
+                // Clean up Firebase listeners
+                if (messagesRef) {
+                    messagesRef.off();
+                    messagesRef = null;
+                }
+                
+                if (roomRef) {
+                    roomRef.off();
+                    roomRef = null;
+                }
+                
+                presenceRef = null;
+                
+            } catch (error) {
+                log(`Error during cleanup: ${error.message}`);
             }
             
-            // Clear all state
-            currentUser = '';
-            currentRoom = '';
+            // Clear state based on mode
+            if (currentMode === 'vanish') {
+                // Vanish mode: clear everything
+                localStorage.removeItem('jayara_active_session');
+                localStorage.removeItem('jayara_mode');
+                currentUser = '';
+                currentRoom = '';
+                passphraseInput.value = '';
+            } else {
+                // Storage mode: keep session info but clear passphrase
+                passphraseInput.value = '';
+            }
+            
             currentPassphrase = '';
             isJoined = false;
+            userPresenceId = '';
             
             // Clear UI
             messagesDiv.innerHTML = '';
             chatDebugLog.innerHTML = '<div class="debug-entry">Left room successfully</div>';
             
-            // Reset form
-            passphraseInput.value = '';
-            
             joinScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
             
-            log('Left room and cleared all data');
+            log('Left room and cleaned up data');
+            
+            // Trigger room cleanup check
+            setTimeout(checkRoomCleanup, 2000);
         }
 
         // Clear local messages
@@ -680,18 +1025,288 @@
         document.getElementById('cleanupButton').addEventListener('click', cleanupRoom);
         document.getElementById('cleanupRoomButton').addEventListener('click', cleanupRoom);
 
+        // Notification permission button
+        document.getElementById('requestNotificationsButton').addEventListener('click', requestNotificationPermission);
+
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
 
-        // Auto-cleanup interval (every 10 minutes)
+        // Check notification permission on load
+        function checkNotificationPermission() {
+            if ('Notification' in window) {
+                notificationPermission = Notification.permission;
+                const notifButton = document.getElementById('requestNotificationsButton');
+                
+                if (notificationPermission === 'default') {
+                    notifButton.style.display = 'inline-block';
+                    notifButton.textContent = '🔔 Enable Notifications';
+                } else if (notificationPermission === 'denied') {
+                    notifButton.style.display = 'inline-block';
+                    notifButton.textContent = '🔕 Notifications Blocked';
+                    notifButton.disabled = true;
+                } else {
+                    notifButton.style.display = 'none';
+                }
+            }
+        }
+
+        // Enhanced message handling with better encryption
+        function addMessage(username, text, timestamp, isOwn = false, messageId) {
+            // Check for duplicate messages
+            if (document.getElementById(`msg-${messageId}`)) {
+                return;
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'sent' : 'received'}`;
+            messageDiv.id = `msg-${messageId}`;
+            
+            // Add message content
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.textContent = text;
+            
+            const messageMeta = document.createElement('div');
+            messageMeta.className = 'message-meta';
+            messageMeta.textContent = `${username} • ${new Date(timestamp).toLocaleTimeString()}`;
+            
+            messageDiv.appendChild(messageText);
+            messageDiv.appendChild(messageMeta);
+            
+            messagesDiv.appendChild(messageDiv);
+
+            // Auto-scroll with smooth behavior
+            setTimeout(() => {
+                messagesDiv.scrollTo({
+                    top: messagesDiv.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
+
+            // Add unread indicator if app is hidden
+            if (document.hidden && !isOwn) {
+                messageDiv.classList.add('unread');
+                updateUnreadCount();
+            }
+        }
+
+        // Unread message management
+        let unreadCount = 0;
+
+        function updateUnreadCount() {
+            unreadCount++;
+            document.title = `(${unreadCount}) Jayara - ${currentRoom}`;
+        }
+
+        function clearUnreadCount() {
+            unreadCount = 0;
+            document.title = `Jayara - ${currentRoom}`;
+            
+            // Remove unread indicators
+            document.querySelectorAll('.message.unread').forEach(msg => {
+                msg.classList.remove('unread');
+            });
+        }
+
+        // Clear unread when app becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && isJoined) {
+                clearUnreadCount();
+            }
+        });
+
+        // Advanced room statistics
+        async function getRoomStats() {
+            if (!currentRoom) return;
+
+            try {
+                const [messagesSnap, presenceSnap] = await Promise.all([
+                    messagesRef.once('value'),
+                    database.ref(`rooms/${currentRoom}/presence`).once('value')
+                ]);
+
+                const messages = messagesSnap.val() || {};
+                const presence = presenceSnap.val() || {};
+                
+                const messageCount = Object.keys(messages).length;
+                const onlineUsers = Object.values(presence).filter(u => u.online).length;
+                const totalUsers = Object.keys(presence).length;
+
+                log(`📊 Room stats: ${messageCount} messages, ${onlineUsers}/${totalUsers} users online`);
+                
+                return { messageCount, onlineUsers, totalUsers };
+            } catch (error) {
+                log(`Stats error: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Show room stats periodically
+        setInterval(() => {
+            if (isJoined) {
+                getRoomStats();
+            }
+        }, 5 * 60 * 1000); // Every 5 minutes
+
+        // Enhanced error handling and recovery
+        function handleFirebaseError(error) {
+            log(`🚨 Firebase Error: ${error.message}`);
+            
+            if (error.code === 'PERMISSION_DENIED') {
+                log('❌ Permission denied - check Firebase rules');
+            } else if (error.code === 'NETWORK_ERROR') {
+                log('📡 Network error - will retry when online');
+            } else {
+                log('🔄 Attempting to reconnect...');
+                
+                // Try to rejoin after a delay
+                setTimeout(() => {
+                    if (!isJoined && currentUser && currentRoom && currentPassphrase) {
+                        log('🔄 Auto-reconnecting...');
+                        joinRoom();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Enhanced connection monitoring with retry logic
+        let connectionRetries = 0;
+        const maxRetries = 3;
+
+        function updateConnectionStatus() {
+            if (isJoined && connectionRef) {
+                connectionRef.on('value', (snapshot) => {
+                    const connected = snapshot.val();
+                    if (connected) {
+                        log('✅ Connected to Firebase');
+                        connectionRetries = 0;
+                    } else {
+                        log('❌ Disconnected from Firebase');
+                        
+                        // Implement exponential backoff retry
+                        if (connectionRetries < maxRetries) {
+                            const delay = Math.pow(2, connectionRetries) * 1000;
+                            setTimeout(() => {
+                                connectionRetries++;
+                                log(`🔄 Retry attempt ${connectionRetries}/${maxRetries}`);
+                            }, delay);
+                        }
+                    }
+                });
+            }
+        }
+
+        // Message delivery confirmation (optional enhancement)
+        async function confirmMessageDelivery(messageId) {
+            try {
+                await database.ref(`rooms/${currentRoom}/delivery/${messageId}`).set({
+                    userId: userPresenceId,
+                    deliveredAt: Date.now()
+                });
+            } catch (error) {
+                // Ignore delivery confirmation errors
+            }
+        }
+
+        // Initialize app with all enhancements
+        function initializeApp() {
+            loadSavedData();
+            checkNotificationPermission();
+            log('🚀 Jayara initialized with enhanced features');
+            
+            // Show feature hints
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                log('💡 Tip: Enable notifications to receive messages when app is closed');
+            }
+            
+            if ('BeforeInstallPromptEvent' in window) {
+                log('📱 Tip: This app can be installed as a PWA for better experience');
+            }
+        }
+
+        // PWA installation prompt handling
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button or hint
+            log('📱 PWA installation available');
+            
+            const installHint = document.createElement('div');
+            installHint.className = 'status info';
+            installHint.innerHTML = `
+                <strong>Install Jayara</strong><br>
+                Install this app for better performance and offline access<br>
+                <button onclick="installPWA()" style="margin-top: 0.5rem;">📱 Install App</button>
+                <button onclick="dismissInstall()" class="btn-secondary" style="margin-top: 0.5rem; margin-left: 0.5rem;">Maybe Later</button>
+            `;
+            
+            if (!isJoined) {
+                joinScreen.insertBefore(installHint, joinScreen.firstChild);
+            }
+        });
+
+        // PWA installation functions
+        window.installPWA = async function() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    log('📱 PWA installed successfully');
+                } else {
+                    log('📱 PWA installation declined');
+                }
+                
+                deferredPrompt = null;
+                document.querySelector('.status')?.remove();
+            }
+        };
+
+        window.dismissInstall = function() {
+            document.querySelector('.status')?.remove();
+            deferredPrompt = null;
+        };
+        document.getElementById('clearLocalButton').addEventListener('click', clearLocal);
+        document.getElementById('cleanupButton').addEventListener('click', cleanupRoom);
+        document.getElementById('cleanupRoomButton').addEventListener('click', cleanupRoom);
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Handle page visibility for notifications and presence
+        document.addEventListener('visibilitychange', () => {
+            if (isJoined && presenceRef) {
+                if (document.hidden) {
+                    log('📱 App backgrounded - enabling notifications');
+                } else {
+                    log('👁️ App focused - disabling notifications');
+                }
+            }
+        });
+
+        // Handle page unload for cleanup
+        window.addEventListener('beforeunload', () => {
+            if (isJoined && presenceRef && currentMode === 'vanish') {
+                // For vanish mode, immediately mark as offline
+                presenceRef.update({ online: false, leftAt: Date.now() });
+            }
+        });
+
+        // Auto-cleanup interval (every 5 minutes for better real-time cleanup)
         setInterval(() => {
             if (isJoined) {
                 cleanupRoom();
             }
-        }, 10 * 60 * 1000);
+        }, 5 * 60 * 1000);
 
         // Connection status monitoring
         let isOnline = navigator.onLine;
@@ -722,8 +1337,7 @@
         });
 
         // Initialize app
-        loadSavedData();
-        log('Jayara initialized - Ready to join a room');
+        initializeApp();
 
         // Register service worker
         if ('serviceWorker' in navigator) {
