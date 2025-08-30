@@ -356,6 +356,7 @@
 
             <div class="controls">
                 <button id="cleanupButton" class="btn-secondary">🧹 Cleanup Room</button>
+                <button id="globalCleanupButton" class="btn-danger">🚨 Global Cleanup ALL</button>
             </div>
 
             <div class="debug" id="debugLog">
@@ -384,6 +385,7 @@
                 <button id="leaveButton" class="btn-danger">Leave Room</button>
                 <button id="clearLocalButton" class="btn-secondary">Clear Local</button>
                 <button id="cleanupRoomButton" class="btn-secondary">🧹 Cleanup</button>
+                <button id="globalCleanupChatButton" class="btn-danger">🚨 Global Cleanup</button>
             </div>
 
             <div class="debug" id="chatDebugLog"></div>
@@ -556,13 +558,13 @@
             }
         }
 
-        // Subscribe to push notifications
+        // Subscribe to push notifications with your VAPID key
         async function subscribeToNotifications() {
             try {
                 const registration = await navigator.serviceWorker.ready;
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array('your-vapid-public-key') // You'll need to generate this
+                    applicationServerKey: urlBase64ToUint8Array('BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0')
                 });
                 
                 // Store subscription in Firebase for this user/room
@@ -571,14 +573,16 @@
                     keys: subscription.toJSON().keys,
                     userId: userPresenceId,
                     room: currentRoom,
-                    username: currentUser
+                    username: currentUser,
+                    timestamp: Date.now()
                 };
                 
                 await database.ref(`notifications/${currentRoom}/${userPresenceId}`).set(subscriptionData);
-                log('📱 Push notification subscription saved');
+                log('📱 Push notification subscription saved with VAPID key');
                 
             } catch (error) {
                 log(`Notification subscription error: ${error.message}`);
+                log('📱 Falling back to local notifications only');
             }
         }
 
@@ -768,12 +772,21 @@
                 const notificationsSnapshot = await database.ref(`notifications/${currentRoom}`).once('value');
                 const notifications = notificationsSnapshot.val() || {};
                 
+                // Store notification for other users to receive
+                const notificationPayload = {
+                    from: currentUser,
+                    message: messageText.substring(0, 100),
+                    room: currentRoom,
+                    timestamp: Date.now(),
+                    type: 'message'
+                };
+                
                 // Send to all users except current user
-                Object.values(notifications).forEach(subscription => {
-                    if (subscription.userId !== userPresenceId && subscription.username !== currentUser) {
-                        // In a real app, you'd send this to your backend to trigger push notifications
-                        // For demo, we'll just log it
-                        log(`📬 Would notify ${subscription.username}: "${messageText.substring(0, 30)}..."`);
+                Object.entries(notifications).forEach(([userId, subscription]) => {
+                    if (userId !== userPresenceId && subscription.username !== currentUser) {
+                        // Store notification for this user
+                        database.ref(`user_notifications/${userId}/${Date.now()}`).set(notificationPayload);
+                        log(`📬 Notification queued for ${subscription.username}`);
                     }
                 });
                 
@@ -782,9 +795,147 @@
             }
         }
 
-        // Enhanced cleanup with presence awareness
+        // GLOBAL CLEANUP FUNCTION - Cleans ALL rooms from Firebase
+        async function globalCleanupAllRooms() {
+            if (!confirm('⚠️ WARNING: This will delete ALL rooms and chats from Firebase!\n\nThis action cannot be undone. Are you sure?')) {
+                return;
+            }
+
+            const secondConfirm = confirm('🚨 FINAL WARNING: You are about to delete EVERYTHING!\n\nType OK to continue or Cancel to abort.');
+            if (!secondConfirm) {
+                return;
+            }
+
+            log('🚨 Starting GLOBAL cleanup of ALL rooms...');
+            
+            try {
+                // Show cleanup progress
+                const cleanupStatus = document.createElement('div');
+                cleanupStatus.className = 'status info';
+                cleanupStatus.innerHTML = `
+                    <strong>🧹 Global Cleanup in Progress...</strong><br>
+                    <div id="cleanupProgress">Scanning Firebase...</div>
+                    <div style="width: 100%; background: #e2e8f0; border-radius: 8px; margin-top: 8px;">
+                        <div id="cleanupBar" style="width: 0%; height: 8px; background: #4f46e5; border-radius: 8px; transition: width 0.3s;"></div>
+                    </div>
+                `;
+
+                if (isJoined) {
+                    chatScreen.insertBefore(cleanupStatus, chatScreen.firstChild);
+                } else {
+                    joinScreen.insertBefore(cleanupStatus, joinScreen.firstChild);
+                }
+
+                const progressDiv = document.getElementById('cleanupProgress');
+                const progressBar = document.getElementById('cleanupBar');
+
+                // Step 1: Get all rooms
+                progressDiv.textContent = 'Step 1/6: Scanning all rooms...';
+                progressBar.style.width = '10%';
+                
+                const roomsSnapshot = await database.ref('rooms').once('value');
+                const rooms = roomsSnapshot.val() || {};
+                const roomCount = Object.keys(rooms).length;
+                
+                log(`📊 Found ${roomCount} rooms to delete`);
+
+                // Step 2: Delete all room messages
+                progressDiv.textContent = `Step 2/6: Deleting messages from ${roomCount} rooms...`;
+                progressBar.style.width = '25%';
+                
+                const messageDeletions = [];
+                Object.keys(rooms).forEach(roomId => {
+                    messageDeletions.push(database.ref(`rooms/${roomId}/messages`).remove());
+                });
+                await Promise.all(messageDeletions);
+                
+                log(`✅ Deleted messages from ${roomCount} rooms`);
+
+                // Step 3: Delete all room presence data
+                progressDiv.textContent = 'Step 3/6: Clearing user presence data...';
+                progressBar.style.width = '40%';
+                
+                const presenceDeletions = [];
+                Object.keys(rooms).forEach(roomId => {
+                    presenceDeletions.push(database.ref(`rooms/${roomId}/presence`).remove());
+                });
+                await Promise.all(presenceDeletions);
+                
+                log(`✅ Cleared presence data from ${roomCount} rooms`);
+
+                // Step 4: Delete all rooms
+                progressDiv.textContent = 'Step 4/6: Deleting room structures...';
+                progressBar.style.width = '60%';
+                
+                await database.ref('rooms').remove();
+                log('✅ Deleted all room structures');
+
+                // Step 5: Delete all notifications
+                progressDiv.textContent = 'Step 5/6: Clearing notification data...';
+                progressBar.style.width = '80%';
+                
+                await database.ref('notifications').remove();
+                await database.ref('user_notifications').remove();
+                await database.ref('room_notifications').remove();
+                log('✅ Cleared all notification data');
+
+                // Step 6: Clean up any remaining data
+                progressDiv.textContent = 'Step 6/6: Final cleanup...';
+                progressBar.style.width = '100%';
+
+                // Clean up any other potential data structures
+                const cleanupRefs = [
+                    'room_stats',
+                    'user_sessions',
+                    'temp_data',
+                    'cleanup_logs'
+                ];
+
+                const finalCleanup = cleanupRefs.map(ref => 
+                    database.ref(ref).remove().catch(() => {}) // Ignore errors for non-existent refs
+                );
+                await Promise.all(finalCleanup);
+
+                // Success message
+                setTimeout(() => {
+                    cleanupStatus.className = 'status success';
+                    cleanupStatus.innerHTML = `
+                        <strong>🎉 Global Cleanup Complete!</strong><br>
+                        Successfully deleted:<br>
+                        • ${roomCount} rooms<br>
+                        • All messages and chat history<br>
+                        • All user presence data<br>
+                        • All notification subscriptions<br>
+                        • All temporary data<br>
+                        <button onclick="this.parentElement.remove()" style="margin-top: 0.5rem;">✅ Close</button>
+                    `;
+                    
+                    log(`🎉 GLOBAL CLEANUP COMPLETE: Removed ${roomCount} rooms and all associated data`);
+                }, 1000);
+
+            } catch (error) {
+                log(`🚨 Global cleanup error: ${error.message}`);
+                
+                // Error message
+                document.querySelector('.status').className = 'status error';
+                document.querySelector('.status').innerHTML = `
+                    <strong>❌ Cleanup Failed</strong><br>
+                    Error: ${error.message}<br>
+                    Some data may still remain in Firebase.<br>
+                    <button onclick="this.parentElement.remove()" style="margin-top: 0.5rem;">Close</button>
+                `;
+            }
+        }
+
+        // Enhanced cleanup with room-specific and global options
         async function cleanupRoom() {
-            if (!currentRoom) return;
+            if (!currentRoom) {
+                // If not in a room, offer global cleanup
+                if (confirm('No active room. Would you like to perform GLOBAL cleanup of ALL rooms?')) {
+                    await globalCleanupAllRooms();
+                }
+                return;
+            }
             
             log('Starting room cleanup...');
             
@@ -818,7 +969,7 @@
                 });
 
                 await Promise.all(deletions);
-                log(`Cleanup complete: ${deletions.length} messages removed`);
+                log(`Cleanup complete: ${deletions.length} messages removed from ${currentRoom}`);
 
                 // Check if room is completely empty and should be deleted
                 const remainingMessages = await messagesRef.once('value');
@@ -864,6 +1015,23 @@
             // Request notification permission
             await requestNotificationPermission();
             
+            // Listen for user notifications (push notification simulation)
+            const userNotificationsRef = database.ref(`user_notifications/${userPresenceId}`);
+            userNotificationsRef.on('child_added', (snapshot) => {
+                const notification = snapshot.val();
+                if (notification && notification.from !== currentUser) {
+                    // Show local notification if app is backgrounded
+                    if (document.hidden && notificationPermission === 'granted') {
+                        showLocalNotification(notification.from, notification.message);
+                    }
+                    
+                    // Clean up notification after showing
+                    setTimeout(() => {
+                        snapshot.ref.remove();
+                    }, 5000);
+                }
+            });
+
             // Listen for messages
             messagesRef.on('child_added', (snapshot) => {
                 const message = snapshot.val();
@@ -1021,9 +1189,15 @@
         document.getElementById('joinButton').addEventListener('click', joinRoom);
         document.getElementById('sendButton').addEventListener('click', sendMessage);
         document.getElementById('leaveButton').addEventListener('click', leaveRoom);
+        // Event listeners
+        document.getElementById('joinButton').addEventListener('click', joinRoom);
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('leaveButton').addEventListener('click', leaveRoom);
         document.getElementById('clearLocalButton').addEventListener('click', clearLocal);
         document.getElementById('cleanupButton').addEventListener('click', cleanupRoom);
         document.getElementById('cleanupRoomButton').addEventListener('click', cleanupRoom);
+        document.getElementById('globalCleanupButton').addEventListener('click', globalCleanupAllRooms);
+        document.getElementById('globalCleanupChatButton').addEventListener('click', globalCleanupAllRooms);
 
         // Notification permission button
         document.getElementById('requestNotificationsButton').addEventListener('click', requestNotificationPermission);
