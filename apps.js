@@ -1,5 +1,5 @@
 // ==============================
-// apps.js - Jayara Chat (final)
+// apps.js - Jayara Chat (final cleaned)
 // ==============================
 
 // ---------- Firebase config ----------
@@ -39,14 +39,12 @@ function logDebug(msg) {
 
 // ---------- helpers ----------
 function savePersistentInfo() {
-  // persist username/room/passphrase only for storage mode
   if (currentMode === "storage") {
     localStorage.setItem("jayara_username", currentUser);
     localStorage.setItem("jayara_room", currentRoom);
     localStorage.setItem("jayara_passphrase", currentPass);
     localStorage.setItem("jayara_mode", currentMode);
   } else {
-    // remove persisted passphrase for vanish mode for privacy
     localStorage.removeItem("jayara_passphrase");
     localStorage.setItem("jayara_username", currentUser);
     localStorage.setItem("jayara_room", currentRoom);
@@ -65,9 +63,9 @@ function loadPersistentInfo() {
   if (pass && mode === "storage") document.getElementById("passphrase").value = pass;
 }
 
-// ---------- cleanup across all rooms (manual button) ----------
+// ---------- cleanup across all rooms ----------
 function runCleanup() {
-  logDebug("Cleanup started (scanning rooms)...");
+  logDebug("🧹 Cleanup started...");
   const roomsRef = db.ref("rooms");
   const now = Date.now();
 
@@ -75,13 +73,128 @@ function runCleanup() {
     const promises = [];
     snap.forEach(roomSnap => {
       const roomKey = roomSnap.key;
-      // iterate modes (vanish, storage, ...), skip meta if present
+      let hasMessages = false;
+
       roomSnap.forEach(modeSnap => {
         if (modeSnap.key === "meta") return;
         const modeKey = modeSnap.key;
         const threshold = modeKey === "vanish" ? ONE_DAY_MS : SEVEN_DAYS_MS;
         const modeRef = db.ref(`rooms/${roomKey}/${modeKey}`);
 
-        // check messages in mode
         const p = modeRef.once("value").then(msnap => {
-          const deletes = [];
+          msnap.forEach(msgSnap => {
+            const msg = msgSnap.val();
+            if (msg && msg.time) {
+              hasMessages = true;
+              if (now - msg.time > threshold) {
+                promises.push(modeRef.child(msgSnap.key).remove());
+              }
+            }
+          });
+        });
+        promises.push(p);
+      });
+
+      // delete empty room older than 7 days
+      if (!hasMessages) {
+        promises.push(db.ref(`rooms/${roomKey}`).remove());
+      }
+    });
+
+    return Promise.all(promises).then(() => {
+      logDebug("✅ Cleanup finished");
+    });
+  });
+}
+
+// ---------- join a room ----------
+function joinRoom() {
+  currentUser = document.getElementById("username").value.trim();
+  currentRoom = document.getElementById("room").value.trim();
+  currentPass = document.getElementById("passphrase").value.trim();
+  currentMode = document.getElementById("mode").value;
+
+  if (!currentUser || !currentRoom || !currentPass) {
+    alert("Enter all details (name, room, passphrase)");
+    return;
+  }
+
+  msgRef = db.ref("rooms/" + currentRoom + "/" + currentMode);
+
+  document.getElementById("joinPanel").style.display = "none";
+  document.getElementById("chatPanel").style.display = "block";
+  document.getElementById("roomLabel").innerText = currentRoom;
+  document.getElementById("modeBadge").innerText = currentMode;
+
+  document.getElementById("messages").innerHTML = "";
+
+  msgRef.off();
+  msgRef.on("child_added", snap => {
+    try {
+      const enc = snap.val();
+      if (!enc || !enc.text) return;
+      const bytes = CryptoJS.AES.decrypt(enc.text, currentPass);
+      const plain = bytes.toString(CryptoJS.enc.Utf8);
+
+      if (!plain) {
+        logDebug("⚠️ Decryption failed for a message");
+        return;
+      }
+
+      addMessage(enc.user, plain, enc.user === currentUser);
+    } catch (e) {
+      logDebug("error decrypting: " + e.message);
+    }
+  });
+
+  savePersistentInfo();
+  logDebug("✅ Joined room " + currentRoom + " in " + currentMode + " mode");
+}
+
+// ---------- send message ----------
+function sendMessage() {
+  if (!msgRef) return;
+  const msgBox = document.getElementById("msgBox");
+  const text = msgBox.value.trim();
+  if (!text) return;
+
+  const ciphertext = CryptoJS.AES.encrypt(text, currentPass).toString();
+
+  msgRef.push({
+    user: currentUser,
+    text: ciphertext,
+    time: Date.now()
+  });
+
+  msgBox.value = "";
+}
+
+// ---------- add message to UI ----------
+function addMessage(user, text, isMe) {
+  const div = document.createElement("div");
+  div.className = "msg " + (isMe ? "me" : "other");
+  div.innerHTML = `<span class="username">${user}:</span> ${text}`;
+  const box = document.getElementById("messages");
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ---------- leave room ----------
+function leaveRoom() {
+  if (msgRef) msgRef.off();
+  currentRoom = null;
+  msgRef = null;
+  document.getElementById("chatPanel").style.display = "none";
+  document.getElementById("joinPanel").style.display = "block";
+}
+
+// ---------- clear local UI ----------
+function clearLocalMessages() {
+  document.getElementById("messages").innerHTML = "";
+}
+
+// ---------- on load ----------
+window.onload = () => {
+  loadPersistentInfo();
+  logDebug("App loaded");
+};
