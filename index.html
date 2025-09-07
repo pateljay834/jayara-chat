@@ -1365,12 +1365,12 @@
             }
         });
 
-        // Auto-cleanup interval (every 30 minutes) - silent cleanup
+        // Auto-cleanup interval - More practical timing
         setInterval(() => {
             if (isJoined) {
-                autoCleanupRoom();
+                autoCleanupRoom(); // Silent cleanup every 2 hours instead of 30 minutes
             }
-        }, 30 * 60 * 1000);
+        }, 2 * 60 * 60 * 1000); // 2 hours
 
         // Initialize app
         initializeApp();
