@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jayara - Secure Chat</title>
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
     <link rel="icon" type="image/png" sizes="192x192" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiM0ZjQ2ZTUiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0yMCA0SDRjLTEuMSAwLTIgLjktMiAydjEyYzAgMS4xLjkgMiAyIDJoMTZjMS4xIDAgMi0uOSAyLTJWNmMwLTEuMS0uOS0yLTItMnpNMjAgMTZINHYtNmgxNnY2eiIvPgo8L3N2Zz4KPC9zdmc+">
     
@@ -87,40 +88,6 @@
             color: #2563eb;
         }
 
-        .call-controls {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .call-btn {
-            padding: 0.5rem;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .call-btn.voice {
-            background: #10b981;
-            color: white;
-        }
-
-        .call-btn.video {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .call-btn:hover {
-            transform: scale(1.1);
-        }
-
         .messages {
             flex: 1;
             padding: 1rem;
@@ -136,6 +103,9 @@
             border-radius: 1rem;
             word-wrap: break-word;
             animation: slideIn 0.3s ease-out;
+            transition: opacity 0.3s ease;
+            position: relative;
+            overflow-wrap: break-word;
         }
 
         .message.sent {
@@ -152,13 +122,25 @@
             border-bottom-left-radius: 0.25rem;
         }
 
+        .message.unread {
+            border-left: 4px solid #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { border-left-color: #10b981; }
+            50% { border-left-color: #34d399; }
+        }
+
+        .message-text {
+            margin-bottom: 0.25rem;
+        }
+
         .message-meta {
             font-size: 0.7rem;
             opacity: 0.7;
             margin-top: 0.25rem;
         }
-
-        .input-area {
             padding: 1rem;
             border-top: 1px solid #e2e8f0;
             background: white;
@@ -276,138 +258,27 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* Call Overlay Styles */
-        .call-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .call-container {
-            background: white;
-            border-radius: 1rem;
-            padding: 2rem;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .video-container {
-            position: relative;
-            margin: 1rem 0;
-        }
-
-        .remote-video, .local-video, .remote-audio {
-            width: 100%;
-            max-width: 300px;
+        .status {
+            padding: 0.75rem;
             border-radius: 0.5rem;
-        }
-
-        .local-video {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 100px;
-            height: 75px;
-            border: 2px solid white;
-        }
-
-        .call-status {
-            font-size: 1.2rem;
-            font-weight: 600;
             margin-bottom: 1rem;
-            color: #374151;
-        }
-
-        .call-participant {
-            font-size: 1rem;
-            color: #64748b;
-            margin-bottom: 1.5rem;
-        }
-
-        .call-controls-overlay {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .call-control-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .call-control-btn.mute {
-            background: #10b981;
-            color: white;
-        }
-
-        .call-control-btn.mute.active {
-            background: #ef4444;
-        }
-
-        .call-control-btn.video {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .call-control-btn.video.active {
-            background: #ef4444;
-        }
-
-        .call-control-btn.end {
-            background: #ef4444;
-            color: white;
-        }
-
-        .call-control-btn:hover {
-            transform: scale(1.1);
-        }
-
-        /* Incoming Call UI */
-        .incoming-call {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 1rem;
-            padding: 2rem;
             text-align: center;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-            display: none;
+            font-weight: 600;
         }
 
-        .incoming-call-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 1.5rem;
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
         }
 
-        .accept-btn {
-            background: #10b981;
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
         }
 
-        .decline-btn {
-            background: #ef4444;
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
         }
 
         @keyframes slideIn {
@@ -441,16 +312,6 @@
             .controls button {
                 flex: 1;
                 min-width: 120px;
-            }
-
-            .call-controls-overlay {
-                gap: 0.5rem;
-            }
-
-            .call-control-btn {
-                width: 45px;
-                height: 45px;
-                font-size: 1.2rem;
             }
         }
     </style>
@@ -488,10 +349,14 @@
                 </select>
             </div>
 
-            <button id="joinButton">Join Room</button>
+            <div class="controls">
+                <button id="joinButton">Join Room</button>
+                <button id="requestNotificationsButton" class="btn-secondary" style="display: none;">🔔 Enable Notifications</button>
+            </div>
 
             <div class="controls">
                 <button id="cleanupButton" class="btn-secondary">🧹 Cleanup Room</button>
+                <button id="globalCleanupButton" class="btn-danger">🚨 Global Cleanup ALL</button>
             </div>
 
             <div class="debug" id="debugLog">
@@ -506,13 +371,7 @@
                     <div id="roomDisplay"></div>
                     <div id="userDisplay"></div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div class="call-controls">
-                        <button class="call-btn voice" onclick="startVoiceCall()" title="Voice Call">📞</button>
-                        <button class="call-btn video" onclick="startVideoCall()" title="Video Call">📹</button>
-                    </div>
-                    <div id="modeDisplay"></div>
-                </div>
+                <div id="modeDisplay"></div>
             </div>
 
             <div class="messages" id="messages"></div>
@@ -526,40 +385,10 @@
                 <button id="leaveButton" class="btn-danger">Leave Room</button>
                 <button id="clearLocalButton" class="btn-secondary">Clear Local</button>
                 <button id="cleanupRoomButton" class="btn-secondary">🧹 Cleanup</button>
+                <button id="globalCleanupChatButton" class="btn-danger">🚨 Global Cleanup</button>
             </div>
 
             <div class="debug" id="chatDebugLog"></div>
-        </div>
-    </div>
-
-    <!-- Call Overlay -->
-    <div class="call-overlay" id="callOverlay">
-        <div class="call-container">
-            <div class="call-status" id="callStatus">Connecting...</div>
-            <div class="call-participant" id="callParticipant">VOICE CALL</div>
-            
-            <div class="video-container">
-                <video id="remoteVideo" class="remote-video" autoplay playsinline style="display: none;"></video>
-                <video id="localVideo" class="local-video" autoplay muted playsinline style="display: none;"></video>
-                <audio id="remoteAudio" autoplay></audio>
-            </div>
-
-            <div class="call-controls-overlay">
-                <button class="call-control-btn mute" id="muteBtn" title="Mute">🎤</button>
-                <button class="call-control-btn video" id="videoBtn" title="Camera" style="display: none;">📹</button>
-                <button class="call-control-btn end" id="endCallBtn" title="End Call">📵</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Incoming Call UI -->
-    <div class="incoming-call" id="incomingCallUI">
-        <h3>Incoming Call</h3>
-        <p id="callerName">Unknown</p>
-        <p id="incomingCallType">Voice Call</p>
-        <div class="incoming-call-buttons">
-            <button class="accept-btn" id="acceptCallBtn">Accept</button>
-            <button class="decline-btn" id="declineCallBtn">Decline</button>
         </div>
     </div>
 
@@ -573,13 +402,13 @@
     <script>
         // Firebase configuration
         const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "https://your-project-default-rtdb.firebaseio.com/",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
+            apiKey: "AIzaSyB0G0JLoNejrshjLaKxFR264cY11rmhVJU",
+            authDomain: "jayara-web.firebaseapp.com",
+            databaseURL: "https://jayara-web-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "jayara-web",
+            storageBucket: "jayara-web.firebasestorage.app",
+            messagingSenderId: "342182893596",
+            appId: "1:342182893596:web:664646e95a40e60d0da7d9"
         };
 
         // Initialize Firebase
@@ -592,16 +421,11 @@
         let currentPassphrase = '';
         let currentMode = 'vanish';
         let messagesRef = null;
-        let callRef = null;
+        let roomRef = null;
+        let presenceRef = null;
         let isJoined = false;
-
-        // WebRTC state
-        let localStream = null;
-        let remoteStream = null;
-        let peerConnection = null;
-        let callState = 'idle'; // idle, calling, incoming, connected
-        let currentCallType = null; // voice or video
-        let isWebRTCSupported = false;
+        let userPresenceId = '';
+        let notificationPermission = 'default';
 
         // DOM elements
         const joinScreen = document.getElementById('joinScreen');
@@ -617,51 +441,6 @@
         const roomDisplay = document.getElementById('roomDisplay');
         const userDisplay = document.getElementById('userDisplay');
         const modeDisplay = document.getElementById('modeDisplay');
-
-        // WebRTC Configuration
-        const rtcConfiguration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
-        // Initialize WebRTC support check
-        async function initializeWebRTC() {
-            try {
-                isWebRTCSupported = !!(navigator.mediaDevices && 
-                    navigator.mediaDevices.getUserMedia && 
-                    window.RTCPeerConnection);
-                    
-                log(`WebRTC Support: ${isWebRTCSupported ? '✅' : '❌'}`);
-                return isWebRTCSupported;
-            } catch (error) {
-                log(`WebRTC initialization error: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Check browser compatibility
-        function checkBrowserCompatibility() {
-            const issues = [];
-            let isCompatible = true;
-
-            if (!window.firebase) {
-                issues.push('Firebase not supported');
-                isCompatible = false;
-            }
-
-            if (!window.CryptoJS) {
-                issues.push('CryptoJS not supported');
-                isCompatible = false;
-            }
-
-            if (!navigator.mediaDevices) {
-                issues.push('MediaDevices API not supported');
-            }
-
-            return { isCompatible, issues };
-        }
 
         // Utility functions
         function log(message) {
@@ -696,27 +475,236 @@
             return Date.now().toString() + Math.random().toString(36).substr(2, 9);
         }
 
-        // Load saved data
+        // Load saved data and restore session
         function loadSavedData() {
             const savedUser = localStorage.getItem('jayara_username');
             const savedRoom = localStorage.getItem('jayara_room');
+            const savedMode = localStorage.getItem('jayara_mode');
+            const savedSession = localStorage.getItem('jayara_active_session');
             
             if (savedUser) usernameInput.value = savedUser;
             if (savedRoom) roomCodeInput.value = savedRoom;
+            if (savedMode) chatModeSelect.value = savedMode;
+            
+            // Auto-rejoin if in storage mode and had active session
+            if (savedSession && savedMode === 'storage' && savedUser && savedRoom) {
+                log('Found active storage mode session - ready to rejoin');
+                showSessionRestorePrompt(savedUser, savedRoom);
+            }
             
             log('Loaded saved data');
         }
 
-        // Save user data
+        // Show session restore prompt
+        function showSessionRestorePrompt(username, room) {
+            const restoreDiv = document.createElement('div');
+            restoreDiv.className = 'status info';
+            restoreDiv.innerHTML = `
+                <strong>Resume Session?</strong><br>
+                Found active session for <strong>${username}</strong> in room <strong>${room}</strong><br>
+                <button onclick="quickRejoin()" style="margin-top: 0.5rem; margin-right: 0.5rem;">Resume Chat</button>
+                <button onclick="clearSession()" class="btn-secondary" style="margin-top: 0.5rem;">Start Fresh</button>
+            `;
+            joinScreen.insertBefore(restoreDiv, joinScreen.firstChild);
+        }
+
+        // Quick rejoin for storage mode
+        window.quickRejoin = function() {
+            const savedUser = localStorage.getItem('jayara_username');
+            const savedRoom = localStorage.getItem('jayara_room');
+            
+            usernameInput.value = savedUser;
+            roomCodeInput.value = savedRoom;
+            chatModeSelect.value = 'storage';
+            
+            // Focus on passphrase input
+            passphraseInput.focus();
+            passphraseInput.placeholder = 'Enter your passphrase to resume...';
+            
+            document.querySelector('.status').remove();
+        };
+
+        // Clear session
+        window.clearSession = function() {
+            localStorage.removeItem('jayara_active_session');
+            localStorage.removeItem('jayara_mode');
+            document.querySelector('.status').remove();
+        };
+
+        // Save user data and session
         function saveUserData() {
             localStorage.setItem('jayara_username', currentUser);
             localStorage.setItem('jayara_room', currentRoom);
+            localStorage.setItem('jayara_mode', currentMode);
+            
+            // Save active session only in storage mode
+            if (currentMode === 'storage') {
+                localStorage.setItem('jayara_active_session', 'true');
+            } else {
+                localStorage.removeItem('jayara_active_session');
+            }
         }
 
-        // Message handling
-        function addMessage(username, text, timestamp, isOwn = false) {
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                notificationPermission = await Notification.requestPermission();
+                if (notificationPermission === 'granted') {
+                    log('🔔 Notification permission granted');
+                    await subscribeToNotifications();
+                } else {
+                    log('🔕 Notification permission denied');
+                }
+            }
+        }
+
+        // Subscribe to push notifications with your VAPID key
+        async function subscribeToNotifications() {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array('BP2a0ozwY3d0DW3eEih0c_Ai0iaNngCyhDWIzzIM2umb5ZWrMwAXaDVw4yjbPSKYYuNDUAYg-U3nDGmumBMt7i0')
+                });
+                
+                // Store subscription in Firebase for this user/room
+                const subscriptionData = {
+                    endpoint: subscription.endpoint,
+                    keys: subscription.toJSON().keys,
+                    userId: userPresenceId,
+                    room: currentRoom,
+                    username: currentUser,
+                    timestamp: Date.now()
+                };
+                
+                await database.ref(`notifications/${currentRoom}/${userPresenceId}`).set(subscriptionData);
+                log('📱 Push notification subscription saved with VAPID key');
+                
+            } catch (error) {
+                log(`Notification subscription error: ${error.message}`);
+                log('📱 Falling back to local notifications only');
+            }
+        }
+
+        // Helper function for VAPID key conversion
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // User presence management
+        async function setupPresence() {
+            userPresenceId = generateId();
+            const presenceData = {
+                username: currentUser,
+                joinedAt: Date.now(),
+                lastSeen: Date.now(),
+                mode: currentMode,
+                online: true
+            };
+
+            presenceRef = database.ref(`rooms/${currentRoom}/presence/${userPresenceId}`);
+            
+            // Set initial presence
+            await presenceRef.set(presenceData);
+            
+            // Update last seen periodically
+            const heartbeatInterval = setInterval(() => {
+                if (isJoined) {
+                    presenceRef.update({ lastSeen: Date.now(), online: true });
+                } else {
+                    clearInterval(heartbeatInterval);
+                }
+            }, 30000); // Every 30 seconds
+
+            // Handle disconnect - crucial for cleanup
+            presenceRef.onDisconnect().update({ online: false, leftAt: Date.now() });
+            
+            // Listen for presence changes
+            const roomPresenceRef = database.ref(`rooms/${currentRoom}/presence`);
+            roomPresenceRef.on('child_removed', async (snapshot) => {
+                const leftUser = snapshot.val();
+                log(`👋 ${leftUser.username} left the room`);
+                
+                // Check if room should be cleaned up
+                await checkRoomCleanup();
+            });
+
+            log(`✅ Presence setup for ${currentUser}`);
+        }
+
+        // Check if room needs cleanup (vanish mode or empty room)
+        async function checkRoomCleanup() {
+            try {
+                const roomPresenceSnapshot = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                const presenceData = roomPresenceSnapshot.val() || {};
+                
+                // Get online users
+                const onlineUsers = Object.values(presenceData).filter(user => user.online);
+                
+                // If vanish mode and user leaves, delete their messages
+                if (currentMode === 'vanish') {
+                    // Clean up messages for this user session
+                    await cleanupUserMessages(userPresenceId);
+                }
+                
+                // If no users online, clean up room (especially for vanish mode)
+                if (onlineUsers.length === 0) {
+                    log('🧹 No active users - cleaning up room');
+                    
+                    if (currentMode === 'vanish') {
+                        // Delete all messages in vanish mode
+                        await database.ref(`rooms/${currentRoom}/messages`).remove();
+                        await database.ref(`rooms/${currentRoom}/presence`).remove();
+                        await database.ref(`notifications/${currentRoom}`).remove();
+                        log('🗑️ Vanish mode: Room completely cleaned');
+                    }
+                }
+                
+            } catch (error) {
+                log(`Cleanup check error: ${error.message}`);
+            }
+        }
+
+        // Clean up messages for a specific user (vanish mode)
+        async function cleanupUserMessages(userId) {
+            if (currentMode !== 'vanish') return;
+            
+            try {
+                const messagesSnapshot = await messagesRef.once('value');
+                const messages = messagesSnapshot.val() || {};
+                
+                // Remove messages from this user session
+                const deletions = [];
+                Object.keys(messages).forEach(key => {
+                    const message = messages[key];
+                    if (message.userId === userId) {
+                        deletions.push(messagesRef.child(key).remove());
+                    }
+                });
+                
+                await Promise.all(deletions);
+                log(`🧹 Cleaned ${deletions.length} messages for departed user`);
+                
+            } catch (error) {
+                log(`User message cleanup error: ${error.message}`);
+            }
+        }
+        function addMessage(username, text, timestamp, isOwn = false, messageId) {
+            // Check for duplicate messages
+            if (document.getElementById(`msg-${messageId}`)) {
+                return;
+            }
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isOwn ? 'sent' : 'received'}`;
+            messageDiv.id = `msg-${messageId}`;
             
             const messageText = document.createElement('div');
             messageText.textContent = text;
@@ -730,12 +718,24 @@
             
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            // Auto-scroll to bottom with smooth behavior
+            setTimeout(() => {
+                messagesDiv.scrollTo({
+                    top: messagesDiv.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
         }
 
-        // Send message
+        // Send message with user tracking
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text || !currentPassphrase) return;
+
+            // Disable send button to prevent double-sending
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
 
             const messageId = generateId();
             const timestamp = Date.now();
@@ -743,6 +743,7 @@
             
             const messageData = {
                 id: messageId,
+                userId: userPresenceId, // Track which user sent this
                 username: currentUser,
                 text: encryptedText,
                 timestamp: timestamp,
@@ -752,391 +753,191 @@
             messagesRef.child(messageId).set(messageData)
                 .then(() => {
                     messageInput.value = '';
-                    log(`Message sent: ${text.substring(0, 20)}...`);
+                    log(`Message sent: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`);
+                    
+                    // Send notifications to other users
+                    sendNotificationToOthers(text);
                 })
                 .catch(error => {
                     log(`Error sending message: ${error.message}`);
+                })
+                .finally(() => {
+                    sendButton.disabled = false;
                 });
         }
 
-        // WebRTC Functions
-        async function startVoiceCall() {
-            if (!isWebRTCSupported) {
-                alert('Voice calls are not supported in this browser');
+        // Send push notifications to other users in the room
+        async function sendNotificationToOthers(messageText) {
+            try {
+                const notificationsSnapshot = await database.ref(`notifications/${currentRoom}`).once('value');
+                const notifications = notificationsSnapshot.val() || {};
+                
+                // Store notification for other users to receive
+                const notificationPayload = {
+                    from: currentUser,
+                    message: messageText.substring(0, 100),
+                    room: currentRoom,
+                    timestamp: Date.now(),
+                    type: 'message'
+                };
+                
+                // Send to all users except current user
+                Object.entries(notifications).forEach(([userId, subscription]) => {
+                    if (userId !== userPresenceId && subscription.username !== currentUser) {
+                        // Store notification for this user
+                        database.ref(`user_notifications/${userId}/${Date.now()}`).set(notificationPayload);
+                        log(`📬 Notification queued for ${subscription.username}`);
+                    }
+                });
+                
+            } catch (error) {
+                log(`Notification sending error: ${error.message}`);
+            }
+        }
+
+        // GLOBAL CLEANUP FUNCTION - Cleans ALL rooms from Firebase
+        async function globalCleanupAllRooms() {
+            if (!confirm('⚠️ WARNING: This will delete ALL rooms and chats from Firebase!\n\nThis action cannot be undone. Are you sure?')) {
                 return;
             }
-            
-            try {
-                log('Starting voice call...');
-                currentCallType = 'voice';
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                await initiateCall('voice');
-            } catch (error) {
-                log(`Voice call error: ${error.message}`);
-                alert('Could not access microphone');
-            }
-        }
 
-        async function startVideoCall() {
-            if (!isWebRTCSupported) {
-                alert('Video calls are not supported in this browser');
+            const secondConfirm = confirm('🚨 FINAL WARNING: You are about to delete EVERYTHING!\n\nType OK to continue or Cancel to abort.');
+            if (!secondConfirm) {
                 return;
             }
+
+            log('🚨 Starting GLOBAL cleanup of ALL rooms...');
             
             try {
-                log('Starting video call...');
-                currentCallType = 'video';
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: true, 
-                    video: true 
-                });
-                await initiateCall('video');
-            } catch (error) {
-                log(`Video call error: ${error.message}`);
-                alert('Could not access camera/microphone');
-            }
-        }
+                // Show cleanup progress
+                const cleanupStatus = document.createElement('div');
+                cleanupStatus.className = 'status info';
+                cleanupStatus.innerHTML = `
+                    <strong>🧹 Global Cleanup in Progress...</strong><br>
+                    <div id="cleanupProgress">Scanning Firebase...</div>
+                    <div style="width: 100%; background: #e2e8f0; border-radius: 8px; margin-top: 8px;">
+                        <div id="cleanupBar" style="width: 0%; height: 8px; background: #4f46e5; border-radius: 8px; transition: width 0.3s;"></div>
+                    </div>
+                `;
 
-        async function initiateCall(callType) {
-            callState = 'calling';
-            
-            // Create peer connection
-            peerConnection = new RTCPeerConnection(rtcConfiguration);
-            
-            // Add local stream
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-
-            // Handle remote stream
-            peerConnection.ontrack = (event) => {
-                remoteStream = event.streams[0];
-                if (callType === 'video') {
-                    document.getElementById('remoteVideo').srcObject = remoteStream;
+                if (isJoined) {
+                    chatScreen.insertBefore(cleanupStatus, chatScreen.firstChild);
                 } else {
-                    document.getElementById('remoteAudio').srcObject = remoteStream;
+                    joinScreen.insertBefore(cleanupStatus, joinScreen.firstChild);
                 }
-                updateCallUI();
-            };
 
-            // Handle ICE candidates
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    callRef.child('candidates').push({
-                        candidate: event.candidate,
-                        from: currentUser
-                    });
-                }
-            };
+                const progressDiv = document.getElementById('cleanupProgress');
+                const progressBar = document.getElementById('cleanupBar');
 
-            // Create offer
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-
-            // Send call offer through Firebase
-            callRef = database.ref(`rooms/${currentRoom}/call`);
-            await callRef.set({
-                offer: offer,
-                caller: currentUser,
-                callType: callType,
-                timestamp: Date.now()
-            });
-
-            showCallingUI(callType, 'Other User');
-            
-            // Listen for answer
-            callRef.child('answer').on('value', async (snapshot) => {
-                const answer = snapshot.val();
-                if (answer && callState === 'calling') {
-                    await peerConnection.setRemoteDescription(answer);
-                    callState = 'connected';
-                    showCallUI(callType, 'Other User');
-                }
-            });
-
-            // Listen for ICE candidates
-            callRef.child('candidates').on('child_added', async (snapshot) => {
-                const candidate = snapshot.val();
-                if (candidate && candidate.from !== currentUser) {
-                    await peerConnection.addIceCandidate(candidate.candidate);
-                }
-            });
-        }
-
-        async function answerCall(callOffer) {
-            try {
-                log('Answering call...');
-                callState = 'connected';
-                currentCallType = callOffer.callType;
-
-                // Get user media
-                const constraints = callOffer.callType === 'video' 
-                    ? { audio: true, video: true }
-                    : { audio: true };
-                    
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-                // Create peer connection
-                peerConnection = new RTCPeerConnection(rtcConfiguration);
+                // Step 1: Get all rooms
+                progressDiv.textContent = 'Step 1/6: Scanning all rooms...';
+                progressBar.style.width = '10%';
                 
-                // Add local stream
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
+                const roomsSnapshot = await database.ref('rooms').once('value');
+                const rooms = roomsSnapshot.val() || {};
+                const roomCount = Object.keys(rooms).length;
+                
+                log(`📊 Found ${roomCount} rooms to delete`);
+
+                // Step 2: Delete all room messages
+                progressDiv.textContent = `Step 2/6: Deleting messages from ${roomCount} rooms...`;
+                progressBar.style.width = '25%';
+                
+                const messageDeletions = [];
+                Object.keys(rooms).forEach(roomId => {
+                    messageDeletions.push(database.ref(`rooms/${roomId}/messages`).remove());
                 });
+                await Promise.all(messageDeletions);
+                
+                log(`✅ Deleted messages from ${roomCount} rooms`);
 
-                // Handle remote stream
-                peerConnection.ontrack = (event) => {
-                    remoteStream = event.streams[0];
-                    if (callOffer.callType === 'video') {
-                        document.getElementById('remoteVideo').srcObject = remoteStream;
-                    } else {
-                        document.getElementById('remoteAudio').srcObject = remoteStream;
-                    }
-                };
+                // Step 3: Delete all room presence data
+                progressDiv.textContent = 'Step 3/6: Clearing user presence data...';
+                progressBar.style.width = '40%';
+                
+                const presenceDeletions = [];
+                Object.keys(rooms).forEach(roomId => {
+                    presenceDeletions.push(database.ref(`rooms/${roomId}/presence`).remove());
+                });
+                await Promise.all(presenceDeletions);
+                
+                log(`✅ Cleared presence data from ${roomCount} rooms`);
 
-                // Handle ICE candidates
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        callRef.child('candidates').push({
-                            candidate: event.candidate,
-                            from: currentUser
-                        });
-                    }
-                };
+                // Step 4: Delete all rooms
+                progressDiv.textContent = 'Step 4/6: Deleting room structures...';
+                progressBar.style.width = '60%';
+                
+                await database.ref('rooms').remove();
+                log('✅ Deleted all room structures');
 
-                // Set remote description and create answer
-                await peerConnection.setRemoteDescription(callOffer.offer);
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
+                // Step 5: Delete all notifications
+                progressDiv.textContent = 'Step 5/6: Clearing notification data...';
+                progressBar.style.width = '80%';
+                
+                await database.ref('notifications').remove();
+                await database.ref('user_notifications').remove();
+                await database.ref('room_notifications').remove();
+                log('✅ Cleared all notification data');
 
-                // Send answer
-                await callRef.child('answer').set(answer);
+                // Step 6: Clean up any remaining data
+                progressDiv.textContent = 'Step 6/6: Final cleanup...';
+                progressBar.style.width = '100%';
 
-                showCallUI(callOffer.callType, callOffer.caller);
+                // Clean up any other potential data structures
+                const cleanupRefs = [
+                    'room_stats',
+                    'user_sessions',
+                    'temp_data',
+                    'cleanup_logs'
+                ];
+
+                const finalCleanup = cleanupRefs.map(ref => 
+                    database.ref(ref).remove().catch(() => {}) // Ignore errors for non-existent refs
+                );
+                await Promise.all(finalCleanup);
+
+                // Success message
+                setTimeout(() => {
+                    cleanupStatus.className = 'status success';
+                    cleanupStatus.innerHTML = `
+                        <strong>🎉 Global Cleanup Complete!</strong><br>
+                        Successfully deleted:<br>
+                        • ${roomCount} rooms<br>
+                        • All messages and chat history<br>
+                        • All user presence data<br>
+                        • All notification subscriptions<br>
+                        • All temporary data<br>
+                        <button onclick="this.parentElement.remove()" style="margin-top: 0.5rem;">✅ Close</button>
+                    `;
+                    
+                    log(`🎉 GLOBAL CLEANUP COMPLETE: Removed ${roomCount} rooms and all associated data`);
+                }, 1000);
 
             } catch (error) {
-                log(`Answer call error: ${error.message}`);
-                endCall();
+                log(`🚨 Global cleanup error: ${error.message}`);
+                
+                // Error message
+                document.querySelector('.status').className = 'status error';
+                document.querySelector('.status').innerHTML = `
+                    <strong>❌ Cleanup Failed</strong><br>
+                    Error: ${error.message}<br>
+                    Some data may still remain in Firebase.<br>
+                    <button onclick="this.parentElement.remove()" style="margin-top: 0.5rem;">Close</button>
+                `;
             }
         }
 
-        function endCall() {
-            log('Ending call...');
-            
-            // Stop local stream
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-
-            // Close peer connection
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-
-            // Clear call reference
-            if (callRef) {
-                callRef.off();
-                callRef.remove();
-                callRef = null;
-            }
-
-            // Reset call state
-            callState = 'idle';
-            currentCallType = null;
-            remoteStream = null;
-
-            // Hide call UI
-            hideCallUI();
-        }
-
-        // Call UI Functions
-        function showCallingUI(callType, targetUser) {
-            document.getElementById('callOverlay').style.display = 'flex';
-            document.getElementById('callStatus').textContent = `Calling ${targetUser}...`;
-            document.getElementById('callParticipant').textContent = `${callType.toUpperCase()} CALL`;
-            
-            if (callType === 'video') {
-                document.getElementById('localVideo').style.display = 'block';
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('videoBtn').style.display = 'block';
-            } else {
-                document.getElementById('localVideo').style.display = 'none';
-                document.getElementById('videoBtn').style.display = 'none';
-            }
-        }
-
-        function showCallUI(callType, participant) {
-            document.getElementById('callOverlay').style.display = 'flex';
-            document.getElementById('callStatus').textContent = 'Connected';
-            document.getElementById('callParticipant').textContent = `${callType.toUpperCase()} CALL with ${participant}`;
-            
-            if (callType === 'video') {
-                document.getElementById('localVideo').style.display = 'block';
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('remoteVideo').style.display = 'block';
-                document.getElementById('videoBtn').style.display = 'block';
-            } else {
-                document.getElementById('localVideo').style.display = 'none';
-                document.getElementById('remoteVideo').style.display = 'none';
-                document.getElementById('videoBtn').style.display = 'none';
-            }
-        }
-
-        function showIncomingCallUI(callOffer) {
-            document.getElementById('incomingCallUI').style.display = 'block';
-            document.getElementById('callerName').textContent = callOffer.caller;
-            document.getElementById('incomingCallType').textContent = `Incoming ${callOffer.callType} call`;
-            document.getElementById('incomingCallUI').dataset.callOffer = JSON.stringify(callOffer);
-            
-            callState = 'incoming';
-            playRingtone();
-        }
-
-        function hideIncomingCallUI() {
-            document.getElementById('incomingCallUI').style.display = 'none';
-            callState = 'idle';
-        }
-
-        function hideCallUI() {
-            document.getElementById('callOverlay').style.display = 'none';
-            document.getElementById('localVideo').srcObject = null;
-            document.getElementById('remoteVideo').srcObject = null;
-            document.getElementById('remoteAudio').srcObject = null;
-        }
-
-        function updateCallUI() {
-            document.getElementById('callStatus').textContent = 'Connected';
-        }
-
-        // Call control functions
-        function toggleMute() {
-            if (localStream) {
-                const audioTracks = localStream.getAudioTracks();
-                const muteBtn = document.getElementById('muteBtn');
-                
-                audioTracks.forEach(track => {
-                    track.enabled = !track.enabled;
-                });
-                
-                if (audioTracks[0] && !audioTracks[0].enabled) {
-                    muteBtn.textContent = '🔇';
-                    muteBtn.classList.add('active');
-                } else {
-                    muteBtn.textContent = '🎤';
-                    muteBtn.classList.remove('active');
-                }
-            }
-        }
-
-        function toggleVideo() {
-            if (localStream && currentCallType === 'video') {
-                const videoTracks = localStream.getVideoTracks();
-                const videoBtn = document.getElementById('videoBtn');
-                
-                videoTracks.forEach(track => {
-                    track.enabled = !track.enabled;
-                });
-                
-                if (videoTracks[0] && !videoTracks[0].enabled) {
-                    videoBtn.textContent = '📷';
-                    videoBtn.classList.add('active');
-                    document.getElementById('localVideo').style.display = 'none';
-                } else {
-                    videoBtn.textContent = '📹';
-                    videoBtn.classList.remove('active');
-                    document.getElementById('localVideo').style.display = 'block';
-                }
-            }
-        }
-
-        // Play ringtone for incoming calls
-        function playRingtone() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                
-                oscillator.start();
-                oscillator.stop(audioContext.currentTime + 0.5);
-                
-                // Repeat ringtone every 2 seconds
-                const ringtoneInterval = setInterval(() => {
-                    if (callState !== 'incoming') {
-                        clearInterval(ringtoneInterval);
-                        return;
-                    }
-                    
-                    const newOscillator = audioContext.createOscillator();
-                    const newGainNode = audioContext.createGain();
-                    
-                    newOscillator.connect(newGainNode);
-                    newGainNode.connect(audioContext.destination);
-                    
-                    newOscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                    newGainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                    
-                    newOscillator.start();
-                    newOscillator.stop(audioContext.currentTime + 0.5);
-                }, 2000);
-                
-            } catch (error) {
-                log('Could not play ringtone: ' + error.message);
-            }
-        }
-
-        // Setup call control event listeners
-        function setupCallControls() {
-            document.getElementById('endCallBtn').addEventListener('click', endCall);
-            document.getElementById('muteBtn').addEventListener('click', toggleMute);
-            document.getElementById('videoBtn').addEventListener('click', toggleVideo);
-            
-            document.getElementById('acceptCallBtn').addEventListener('click', () => {
-                const callOffer = JSON.parse(document.getElementById('incomingCallUI').dataset.callOffer || '{}');
-                hideIncomingCallUI();
-                answerCall(callOffer);
-            });
-            
-            document.getElementById('declineCallBtn').addEventListener('click', () => {
-                hideIncomingCallUI();
-                if (callRef) {
-                    callRef.remove();
-                }
-            });
-        }
-
-        // Global functions for call buttons (called from onclick)
-        window.startVoiceCall = startVoiceCall;
-        window.startVideoCall = startVideoCall;
-
-        // Cleanup old messages in current room only
+        // Enhanced cleanup with room-specific and global options
         async function cleanupRoom() {
             if (!currentRoom) {
-                alert('No room joined. Please join a room first.');
+                // If not in a room, offer global cleanup
+                if (confirm('No active room. Would you like to perform GLOBAL cleanup of ALL rooms?')) {
+                    await globalCleanupAllRooms();
+                }
                 return;
             }
             
-            const confirmCleanup = confirm(
-                '🧹 ROOM CLEANUP\n\n' +
-                `This will delete old messages from room "${currentRoom}":\n` +
-                '• Vanish mode messages older than 24 hours\n' +
-                '• Storage mode messages older than 7 days\n\n' +
-                'Continue?'
-            );
-            
-            if (!confirmCleanup) {
-                log('Room cleanup cancelled by user');
-                return;
-            }
-            
-            log(`🧹 Starting cleanup for room: ${currentRoom}...`);
+            log('Starting room cleanup...');
             
             try {
                 const snapshot = await messagesRef.once('value');
@@ -1144,15 +945,22 @@
                 const now = Date.now();
                 const deletions = [];
 
+                // Get current room presence to avoid deleting active users' messages
+                const presenceSnapshot = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                const presence = presenceSnapshot.val() || {};
+                const activeUserIds = Object.keys(presence).filter(id => presence[id].online);
+
                 Object.keys(messages).forEach(key => {
                     const message = messages[key];
-                    if (!message.timestamp) return; // Skip invalid messages
-                    
                     const age = now - message.timestamp;
                     
-                    // Delete vanish mode messages older than 24h
-                    if (message.mode === 'vanish' && age > 24 * 60 * 60 * 1000) {
-                        deletions.push(messagesRef.child(key).remove());
+                    // Delete vanish mode messages older than 24h OR from users who left
+                    if (message.mode === 'vanish') {
+                        const shouldDelete = age > 24 * 60 * 60 * 1000 || 
+                                           (message.userId && !activeUserIds.includes(message.userId));
+                        if (shouldDelete) {
+                            deletions.push(messagesRef.child(key).remove());
+                        }
                     }
                     // Delete storage mode messages older than 7 days
                     else if (message.mode === 'storage' && age > 7 * 24 * 60 * 60 * 1000) {
@@ -1160,31 +968,24 @@
                     }
                 });
 
-                if (deletions.length > 0) {
-                    await Promise.all(deletions);
-                    log(`✅ Room cleanup complete: ${deletions.length} messages removed from "${currentRoom}"`);
-                    
-                    alert(
-                        `🧹 Room Cleanup Complete!\n\n` +
-                        `Room: ${currentRoom}\n` +
-                        `Messages deleted: ${deletions.length}`
-                    );
-                } else {
-                    log(`✅ Room cleanup complete: No old messages found in "${currentRoom}"`);
-                    alert(
-                        `🧹 Room Cleanup Complete!\n\n` +
-                        `Room: ${currentRoom}\n` +
-                        `No old messages found to delete.`
-                    );
+                await Promise.all(deletions);
+                log(`Cleanup complete: ${deletions.length} messages removed from ${currentRoom}`);
+
+                // Check if room is completely empty and should be deleted
+                const remainingMessages = await messagesRef.once('value');
+                const remainingPresence = await database.ref(`rooms/${currentRoom}/presence`).once('value');
+                
+                if (!remainingMessages.exists() && !remainingPresence.exists()) {
+                    await database.ref(`rooms/${currentRoom}`).remove();
+                    log('🗑️ Empty room completely removed');
                 }
                 
             } catch (error) {
-                log(`❌ Room cleanup error: ${error.message}`);
-                alert(`Room cleanup failed: ${error.message}`);
+                log(`Cleanup error: ${error.message}`);
             }
         }
 
-        // Join room
+        // Join room with enhanced presence and notifications
         async function joinRoom() {
             const username = usernameInput.value.trim();
             const roomCode = roomCodeInput.value.trim();
@@ -1205,6 +1006,31 @@
             
             // Setup Firebase references
             messagesRef = database.ref(`rooms/${roomCode}/messages`);
+            roomRef = database.ref(`rooms/${roomCode}`);
+            connectionRef = database.ref('.info/connected');
+            
+            // Setup user presence
+            await setupPresence();
+            
+            // Request notification permission
+            await requestNotificationPermission();
+            
+            // Listen for user notifications (push notification simulation)
+            const userNotificationsRef = database.ref(`user_notifications/${userPresenceId}`);
+            userNotificationsRef.on('child_added', (snapshot) => {
+                const notification = snapshot.val();
+                if (notification && notification.from !== currentUser) {
+                    // Show local notification if app is backgrounded
+                    if (document.hidden && notificationPermission === 'granted') {
+                        showLocalNotification(notification.from, notification.message);
+                    }
+                    
+                    // Clean up notification after showing
+                    setTimeout(() => {
+                        snapshot.ref.remove();
+                    }, 5000);
+                }
+            });
 
             // Listen for messages
             messagesRef.on('child_added', (snapshot) => {
@@ -1213,22 +1039,30 @@
 
                 const decryptedText = decrypt(message.text, currentPassphrase);
                 if (decryptedText) {
-                    const isOwn = message.username === currentUser;
-                    addMessage(message.username, decryptedText, message.timestamp, isOwn);
+                    const isOwn = message.username === currentUser && message.userId === userPresenceId;
+                    addMessage(message.username, decryptedText, message.timestamp, isOwn, message.id);
+                    
+                    // Show notification for messages from others (if app is in background)
+                    if (!isOwn && document.hidden && notificationPermission === 'granted') {
+                        showLocalNotification(message.username, decryptedText);
+                    }
                 } else {
                     log('Failed to decrypt message (wrong passphrase?)');
                 }
             });
 
-            // Listen for incoming calls
-            const callsRef = database.ref(`rooms/${roomCode}/call`);
-            callsRef.on('value', (snapshot) => {
-                const callData = snapshot.val();
-                if (callData && callData.caller !== currentUser && callState === 'idle') {
-                    showIncomingCallUI(callData);
-                    callRef = callsRef;
+            // Listen for messages being removed
+            messagesRef.on('child_removed', (snapshot) => {
+                const messageId = snapshot.key;
+                const messageElement = document.getElementById(`msg-${messageId}`);
+                if (messageElement) {
+                    messageElement.style.opacity = '0';
+                    setTimeout(() => messageElement.remove(), 300);
                 }
             });
+
+            // Monitor connection status
+            updateConnectionStatus();
 
             // Update UI
             roomDisplay.textContent = `Room: ${roomCode}`;
@@ -1248,35 +1082,101 @@
             setTimeout(cleanupRoom, 1000);
         }
 
-        // Leave room
-        function leaveRoom() {
-            if (messagesRef) {
-                messagesRef.off();
-                messagesRef = null;
+        // Show local notification
+        function showLocalNotification(username, message) {
+            if ('Notification' in window && notificationPermission === 'granted') {
+                const notification = new Notification(`${username} in ${currentRoom}`, {
+                    body: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+                    icon: '/icon-192.png',
+                    badge: '/badge-72.png',
+                    tag: `jayara-${currentRoom}`,
+                    requireInteraction: false,
+                    silent: false
+                });
+
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+
+                // Auto-close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+            }
+        }
+
+        // Leave room with proper cleanup
+        async function leaveRoom() {
+            log('Leaving room...');
+            
+            try {
+                // Mark user as offline and set leave time
+                if (presenceRef) {
+                    await presenceRef.update({ 
+                        online: false, 
+                        leftAt: Date.now() 
+                    });
+                    
+                    // For vanish mode, clean up user's messages immediately
+                    if (currentMode === 'vanish') {
+                        await cleanupUserMessages(userPresenceId);
+                    }
+                    
+                    // Remove presence after a delay (for graceful disconnect)
+                    setTimeout(async () => {
+                        try {
+                            await presenceRef.remove();
+                            await database.ref(`notifications/${currentRoom}/${userPresenceId}`).remove();
+                        } catch (e) {
+                            // Ignore errors on cleanup
+                        }
+                    }, 1000);
+                }
+                
+                // Clean up Firebase listeners
+                if (messagesRef) {
+                    messagesRef.off();
+                    messagesRef = null;
+                }
+                
+                if (roomRef) {
+                    roomRef.off();
+                    roomRef = null;
+                }
+                
+                presenceRef = null;
+                
+            } catch (error) {
+                log(`Error during cleanup: ${error.message}`);
             }
             
-            if (callRef) {
-                callRef.off();
-                callRef = null;
+            // Clear state based on mode
+            if (currentMode === 'vanish') {
+                // Vanish mode: clear everything
+                localStorage.removeItem('jayara_active_session');
+                localStorage.removeItem('jayara_mode');
+                currentUser = '';
+                currentRoom = '';
+                passphraseInput.value = '';
+            } else {
+                // Storage mode: keep session info but clear passphrase
+                passphraseInput.value = '';
             }
             
-            // End any active call
-            if (callState !== 'idle') {
-                endCall();
-            }
-            
-            currentUser = '';
-            currentRoom = '';
             currentPassphrase = '';
             isJoined = false;
+            userPresenceId = '';
             
+            // Clear UI
             messagesDiv.innerHTML = '';
-            chatDebugLog.innerHTML = '';
+            chatDebugLog.innerHTML = '<div class="debug-entry">Left room successfully</div>';
             
             joinScreen.style.display = 'flex';
             chatScreen.style.display = 'none';
             
-            log('Left room');
+            log('Left room and cleaned up data');
+            
+            // Trigger room cleanup check
+            setTimeout(checkRoomCleanup, 2000);
         }
 
         // Clear local messages
@@ -1285,79 +1185,22 @@
             log('Local messages cleared');
         }
 
-        // Initialize app with WebRTC support
-        async function initializeApp() {
-            try {
-                log('🚀 Jayara Chat App Starting...');
-                
-                // Check basic browser compatibility
-                const compatibility = checkBrowserCompatibility();
-                if (!compatibility.isCompatible) {
-                    log(`❌ Compatibility issues: ${compatibility.issues.join(', ')}`);
-                    alert('Your browser is not compatible with this app. Please use a modern browser.');
-                    return;
-                }
-                
-                // Load saved data
-                loadSavedData();
-                
-                // Initialize WebRTC
-                const webrtcSupported = await initializeWebRTC();
-                
-                // Show detailed environment info
-                log(`🌐 Origin: ${window.location.origin}`);
-                log(`📱 User Agent: ${navigator.userAgent.substring(0, 80)}...`);
-                log(`📡 WebRTC: ${webrtcSupported ? 'Supported' : 'Not supported'}`);
-                log(`🔥 Firebase: ${typeof firebase !== 'undefined' ? 'Loaded' : 'NOT LOADED'}`);
-                log(`🔐 CryptoJS: ${typeof CryptoJS !== 'undefined' ? 'Loaded' : 'NOT LOADED'}`);
-                
-                // Test critical dependencies
-                if (typeof firebase === 'undefined') {
-                    log('❌ CRITICAL: Firebase not loaded');
-                    alert('Firebase failed to load. Please check your internet connection and try again.');
-                    return;
-                }
-                
-                if (typeof CryptoJS === 'undefined') {
-                    log('❌ CRITICAL: CryptoJS not loaded');
-                    alert('Encryption library failed to load. Please check your internet connection and try again.');
-                    return;
-                }
-                
-                // Test Firebase initialization
-                try {
-                    const testDB = firebase.database();
-                    log('✅ Firebase database initialized');
-                } catch (firebaseError) {
-                    log(`❌ Firebase initialization error: ${firebaseError.message}`);
-                    alert('Firebase initialization failed. Please refresh the page.');
-                    return;
-                }
-                
-                // Setup call control event listeners
-                setupCallControls();
-                
-                // Show success message
-                log('✅ Jayara initialized successfully');
-                if (webrtcSupported) {
-                    log('📞 Voice & Video calls are available!');
-                } else {
-                    log('📞 Voice & Video calls not supported in this browser');
-                }
-                
-            } catch (error) {
-                log(`❌ Critical initialization error: ${error.message}`);
-                alert(`App failed to initialize: ${error.message}\n\nPlease refresh the page.`);
-            }
-        }
-
+        // Event listeners
+        document.getElementById('joinButton').addEventListener('click', joinRoom);
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('leaveButton').addEventListener('click', leaveRoom);
         // Event listeners
         document.getElementById('joinButton').addEventListener('click', joinRoom);
         document.getElementById('sendButton').addEventListener('click', sendMessage);
         document.getElementById('leaveButton').addEventListener('click', leaveRoom);
         document.getElementById('clearLocalButton').addEventListener('click', clearLocal);
+        document.getElementById('cleanupButton').addEventListener('click', cleanupRoom);
         document.getElementById('cleanupRoomButton').addEventListener('click', cleanupRoom);
-        document.getElementById('globalCleanupButton').addEventListener('click', globalCleanup);
+        document.getElementById('globalCleanupButton').addEventListener('click', globalCleanupAllRooms);
+        document.getElementById('globalCleanupChatButton').addEventListener('click', globalCleanupAllRooms);
+
+        // Notification permission button
+        document.getElementById('requestNotificationsButton').addEventListener('click', requestNotificationPermission);
 
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -1365,15 +1208,349 @@
             }
         });
 
-        // Auto-cleanup interval - More practical timing
+        // Check notification permission on load
+        function checkNotificationPermission() {
+            if ('Notification' in window) {
+                notificationPermission = Notification.permission;
+                const notifButton = document.getElementById('requestNotificationsButton');
+                
+                if (notificationPermission === 'default') {
+                    notifButton.style.display = 'inline-block';
+                    notifButton.textContent = '🔔 Enable Notifications';
+                } else if (notificationPermission === 'denied') {
+                    notifButton.style.display = 'inline-block';
+                    notifButton.textContent = '🔕 Notifications Blocked';
+                    notifButton.disabled = true;
+                } else {
+                    notifButton.style.display = 'none';
+                }
+            }
+        }
+
+        // Enhanced message handling with better encryption
+        function addMessage(username, text, timestamp, isOwn = false, messageId) {
+            // Check for duplicate messages
+            if (document.getElementById(`msg-${messageId}`)) {
+                return;
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'sent' : 'received'}`;
+            messageDiv.id = `msg-${messageId}`;
+            
+            // Add message content
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.textContent = text;
+            
+            const messageMeta = document.createElement('div');
+            messageMeta.className = 'message-meta';
+            messageMeta.textContent = `${username} • ${new Date(timestamp).toLocaleTimeString()}`;
+            
+            messageDiv.appendChild(messageText);
+            messageDiv.appendChild(messageMeta);
+            
+            messagesDiv.appendChild(messageDiv);
+
+            // Auto-scroll with smooth behavior
+            setTimeout(() => {
+                messagesDiv.scrollTo({
+                    top: messagesDiv.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
+
+            // Add unread indicator if app is hidden
+            if (document.hidden && !isOwn) {
+                messageDiv.classList.add('unread');
+                updateUnreadCount();
+            }
+        }
+
+        // Unread message management
+        let unreadCount = 0;
+
+        function updateUnreadCount() {
+            unreadCount++;
+            document.title = `(${unreadCount}) Jayara - ${currentRoom}`;
+        }
+
+        function clearUnreadCount() {
+            unreadCount = 0;
+            document.title = `Jayara - ${currentRoom}`;
+            
+            // Remove unread indicators
+            document.querySelectorAll('.message.unread').forEach(msg => {
+                msg.classList.remove('unread');
+            });
+        }
+
+        // Clear unread when app becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && isJoined) {
+                clearUnreadCount();
+            }
+        });
+
+        // Advanced room statistics
+        async function getRoomStats() {
+            if (!currentRoom) return;
+
+            try {
+                const [messagesSnap, presenceSnap] = await Promise.all([
+                    messagesRef.once('value'),
+                    database.ref(`rooms/${currentRoom}/presence`).once('value')
+                ]);
+
+                const messages = messagesSnap.val() || {};
+                const presence = presenceSnap.val() || {};
+                
+                const messageCount = Object.keys(messages).length;
+                const onlineUsers = Object.values(presence).filter(u => u.online).length;
+                const totalUsers = Object.keys(presence).length;
+
+                log(`📊 Room stats: ${messageCount} messages, ${onlineUsers}/${totalUsers} users online`);
+                
+                return { messageCount, onlineUsers, totalUsers };
+            } catch (error) {
+                log(`Stats error: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Show room stats periodically
         setInterval(() => {
             if (isJoined) {
-                autoCleanupRoom(); // Silent cleanup every 2 hours instead of 30 minutes
+                getRoomStats();
             }
-        }, 2 * 60 * 60 * 1000); // 2 hours
+        }, 5 * 60 * 1000); // Every 5 minutes
+
+        // Enhanced error handling and recovery
+        function handleFirebaseError(error) {
+            log(`🚨 Firebase Error: ${error.message}`);
+            
+            if (error.code === 'PERMISSION_DENIED') {
+                log('❌ Permission denied - check Firebase rules');
+            } else if (error.code === 'NETWORK_ERROR') {
+                log('📡 Network error - will retry when online');
+            } else {
+                log('🔄 Attempting to reconnect...');
+                
+                // Try to rejoin after a delay
+                setTimeout(() => {
+                    if (!isJoined && currentUser && currentRoom && currentPassphrase) {
+                        log('🔄 Auto-reconnecting...');
+                        joinRoom();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Enhanced connection monitoring with retry logic
+        let connectionRetries = 0;
+        const maxRetries = 3;
+
+        function updateConnectionStatus() {
+            if (isJoined && connectionRef) {
+                connectionRef.on('value', (snapshot) => {
+                    const connected = snapshot.val();
+                    if (connected) {
+                        log('✅ Connected to Firebase');
+                        connectionRetries = 0;
+                    } else {
+                        log('❌ Disconnected from Firebase');
+                        
+                        // Implement exponential backoff retry
+                        if (connectionRetries < maxRetries) {
+                            const delay = Math.pow(2, connectionRetries) * 1000;
+                            setTimeout(() => {
+                                connectionRetries++;
+                                log(`🔄 Retry attempt ${connectionRetries}/${maxRetries}`);
+                            }, delay);
+                        }
+                    }
+                });
+            }
+        }
+
+        // Message delivery confirmation (optional enhancement)
+        async function confirmMessageDelivery(messageId) {
+            try {
+                await database.ref(`rooms/${currentRoom}/delivery/${messageId}`).set({
+                    userId: userPresenceId,
+                    deliveredAt: Date.now()
+                });
+            } catch (error) {
+                // Ignore delivery confirmation errors
+            }
+        }
+
+        // Initialize app with all enhancements
+        function initializeApp() {
+            loadSavedData();
+            checkNotificationPermission();
+            log('🚀 Jayara initialized with enhanced features');
+            
+            // Show feature hints
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+                log('💡 Tip: Enable notifications to receive messages when app is closed');
+            }
+            
+            if ('BeforeInstallPromptEvent' in window) {
+                log('📱 Tip: This app can be installed as a PWA for better experience');
+            }
+        }
+
+        // PWA installation prompt handling
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button or hint
+            log('📱 PWA installation available');
+            
+            const installHint = document.createElement('div');
+            installHint.className = 'status info';
+            installHint.innerHTML = `
+                <strong>Install Jayara</strong><br>
+                Install this app for better performance and offline access<br>
+                <button onclick="installPWA()" style="margin-top: 0.5rem;">📱 Install App</button>
+                <button onclick="dismissInstall()" class="btn-secondary" style="margin-top: 0.5rem; margin-left: 0.5rem;">Maybe Later</button>
+            `;
+            
+            if (!isJoined) {
+                joinScreen.insertBefore(installHint, joinScreen.firstChild);
+            }
+        });
+
+        // PWA installation functions
+        window.installPWA = async function() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    log('📱 PWA installed successfully');
+                } else {
+                    log('📱 PWA installation declined');
+                }
+                
+                deferredPrompt = null;
+                document.querySelector('.status')?.remove();
+            }
+        };
+
+        window.dismissInstall = function() {
+            document.querySelector('.status')?.remove();
+            deferredPrompt = null;
+        };
+        document.getElementById('clearLocalButton').addEventListener('click', clearLocal);
+        document.getElementById('cleanupButton').addEventListener('click', cleanupRoom);
+        document.getElementById('cleanupRoomButton').addEventListener('click', cleanupRoom);
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Handle page visibility for notifications and presence
+        document.addEventListener('visibilitychange', () => {
+            if (isJoined && presenceRef) {
+                if (document.hidden) {
+                    log('📱 App backgrounded - enabling notifications');
+                } else {
+                    log('👁️ App focused - disabling notifications');
+                }
+            }
+        });
+
+        // Handle page unload for cleanup
+        window.addEventListener('beforeunload', () => {
+            if (isJoined && presenceRef && currentMode === 'vanish') {
+                // For vanish mode, immediately mark as offline
+                presenceRef.update({ online: false, leftAt: Date.now() });
+            }
+        });
+
+        // Auto-cleanup interval (every 5 minutes for better real-time cleanup)
+        setInterval(() => {
+            if (isJoined) {
+                cleanupRoom();
+            }
+        }, 5 * 60 * 1000);
+
+        // Connection status monitoring
+        let isOnline = navigator.onLine;
+        let connectionRef = null;
+
+        function updateConnectionStatus() {
+            if (isJoined && connectionRef) {
+                connectionRef.on('value', (snapshot) => {
+                    const connected = snapshot.val();
+                    if (connected) {
+                        log('✅ Connected to Firebase');
+                    } else {
+                        log('❌ Disconnected from Firebase');
+                    }
+                });
+            }
+        }
+
+        window.addEventListener('online', () => {
+            isOnline = true;
+            log('📶 Back online');
+            updateConnectionStatus();
+        });
+
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            log('📵 Offline mode');
+        });
 
         // Initialize app
         initializeApp();
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        log('SW registered successfully');
+                    })
+                    .catch((error) => {
+                        log('SW registration failed');
+                    });
+            });
+        }
+    </script>
+
+    <!-- Manifest and SW scripts need to be separate files -->
+    <script>
+        // Create manifest.json dynamically
+        const manifest = {
+            "name": "Jayara - Secure Chat",
+            "short_name": "Jayara",
+            "description": "End-to-end encrypted chat application",
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#4f46e5",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiM0ZjQ2ZTUiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0yMCA0SDRjLTEuMSAwLTIgLjktMiAydjEyYzAgMS4xLjkgMiAyIDJoMTZjMS4xIDAgMi0uOSAyLTJWNmMwLTEuMS0uOS0yLTItMnpNMjAgMTZINHYtNmgxNnY2eiIvPgo8L3N2Zz4KPC9zdmc+",
+                    "sizes": "192x192",
+                    "type": "image/svg+xml"
+                }
+            ]
+        };
+
+        // Create a blob URL for the manifest
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        document.querySelector('link[rel="manifest"]').href = manifestURL;
     </script>
 </body>
 </html>
